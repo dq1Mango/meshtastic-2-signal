@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+meshtastic = "0.1.8"
+tokio = { version = "1.48.0", features = ["macros", "sync"] }
+
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
