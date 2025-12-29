@@ -1,8 +1,7 @@
 /// This example connects to a radio via serial and prints out all received packets.
 /// This example requires a powered and flashed Meshtastic radio.
 /// https://meshtastic.org/docs/supported-hardware
-use std::io::{self, BufRead};
-
+// use std::io::{self, BufRead};
 use meshtastic::api::StreamApi;
 use meshtastic::utils;
 
@@ -12,17 +11,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   let available_ports = utils::stream::available_serial_ports()?;
   println!("Available ports: {:?}", available_ports);
-  println!("Enter the name of a port to connect to:");
+  // println!("Enter the name of a port to connect to:");
+  //
+  // let stdin = io::stdin();
+  // let entered_port = stdin
+  //   .lock()
+  //   .lines()
+  //   .next()
+  //   .expect("Failed to find next line")
+  //   .expect("Could not read next line");
+  let port = String::from("/dev/ttyACM0");
 
-  let stdin = io::stdin();
-  let entered_port = stdin
-    .lock()
-    .lines()
-    .next()
-    .expect("Failed to find next line")
-    .expect("Could not read next line");
-
-  let serial_stream = utils::stream::build_serial_stream(entered_port, None, None, None)?;
+  let serial_stream = utils::stream::build_serial_stream(port, None, None, None)?;
   let (mut decoded_listener, stream_api) = stream_api.connect(serial_stream).await;
 
   let config_id = utils::generate_rand_id();

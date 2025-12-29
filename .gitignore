@@ -1,8 +1,7 @@
 custom-build-command.sh
 
 /.venv
-
-
+release
 
 # Added by cargo
 
