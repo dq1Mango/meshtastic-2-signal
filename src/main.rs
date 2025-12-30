@@ -2,7 +2,15 @@
 /// This example requires a powered and flashed Meshtastic radio.
 /// https://meshtastic.org/docs/supported-hardware
 // use std::io::{self, BufRead};
+mod dumb_packet_router;
+use dumb_packet_router::DumbPacketRouter;
+use dumb_packet_router::MyError;
+
 use meshtastic::api::StreamApi;
+use meshtastic::packet::PacketRouter;
+use meshtastic::protobufs::ChannelSettings;
+use meshtastic::protobufs::config::DeviceConfig;
+use meshtastic::protobufs::config::NetworkConfig;
 use meshtastic::utils;
 
 // This import allows for decoding of mesh packets
@@ -37,9 +45,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (mut decoded_listener, stream_api) = stream_api.connect(serial_stream).await;
 
   let config_id = utils::generate_rand_id();
-  let stream_api = stream_api.configure(config_id).await?;
+  let mut stream_api = stream_api.configure(config_id).await?;
 
   let mut nodes = HashMap::<usize, meshtastic::protobufs::NodeInfo>::new();
+
+  let channel_config = protobufs::Channel {
+    index: 1,
+    settings: Some(ChannelSettings {
+      psk: vec![],
+      name: "gateway".to_string(),
+      id: 67,
+      uplink_enabled: true,
+      downlink_enabled: true,
+      module_settings: None,
+      channel_num: 0,
+    }),
+    role: 2,
+  };
+
+  let mut packet_router = DumbPacketRouter;
+  println!(
+    "{:?}",
+    stream_api
+      .update_channel_config::<String, MyError, DumbPacketRouter>(&mut packet_router, channel_config)
+      .await
+  );
+  return Ok(());
 
   // This loop can be broken with ctrl+c or by disconnecting
   // the attached serial port.
@@ -78,7 +109,7 @@ fn handle_from_radio_packet(from_radio_packet: meshtastic::protobufs::FromRadio,
   // can be matched on, and the appropriate user-defined action can be taken.
   match payload_variant {
     meshtastic::protobufs::from_radio::PayloadVariant::Channel(channel) => {
-      // println!("Received channel packet: {:?}", channel);
+      println!("Received channel packet: {:?}", channel);
     }
     meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(node_info) => {
       println!("Received node info packet: {:?}", node_info);
