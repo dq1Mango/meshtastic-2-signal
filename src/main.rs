@@ -39,6 +39,7 @@ use url::Url;
 use qrcodegen::QrCode;
 use qrcodegen::QrCodeEcc;
 // use crate::signal::*;
+use crate::signal::default_db_path;
 use crate::signal::link_device;
 use crate::update::*;
 use crate::{logger::Logger, mysignal::SignalSpawner, signal::Cmd, update::LinkingAction};
@@ -350,7 +351,7 @@ fn draw_linking_screen(url: &Option<Url>) {
         Err(_) => println!("Error generating qrcode (tough shit pal)"),
       }
       // let raw_url = vec![Line::from("Or visit the raw url:"), Line::from(url.to_string())];
-      println!("Or visit the raw url: {}", url.to_string());
+      println!("Or visit the url like a caveman: {}", url.to_string());
       // Paragraph::new(raw_url).render(
       //   Rect {
       //     x: area.x,
@@ -370,7 +371,7 @@ fn draw_linking_screen(url: &Option<Url>) {
 #[tokio::main(flavor = "local")]
 async fn main() -> anyhow::Result<()> {
   let (action_tx, mut action_rx) = mpsc::unbounded_channel();
-  let db_path = "./signal.db3";
+  let db_path = default_db_path();
   let mut config_store =
     SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
 
@@ -426,6 +427,8 @@ async fn main() -> anyhow::Result<()> {
       SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
   }
 
+  Logger::log("Linked!!!");
+
   let manager = Manager::load_registered(config_store)
     .await
     .expect("failed to make the manager");
@@ -472,7 +475,7 @@ async fn main() -> anyhow::Result<()> {
 
   // This loop can be broken with ctrl+c or by disconnecting
   // the attached serial port.
-
+  Logger::log("listening for mesh packets...");
   loop {
     let soon_to_be_legacy = decoded_listener.recv().await;
 

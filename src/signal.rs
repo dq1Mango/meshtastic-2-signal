@@ -266,12 +266,13 @@ pub fn attachments_tmp_dir() -> anyhow::Result<TempDir> {
 // }
 
 pub fn default_db_path() -> String {
-  ProjectDirs::from("org", "whisperfish", "presage")
-    .unwrap()
-    .config_dir()
-    .join("cli.db3")
-    .display()
-    .to_string()
+  // ProjectDirs::from("org", "whisperfish", "presage")
+  //   .unwrap()
+  //   .config_dir()
+  //   .join("cli.db3")
+  //   .display()
+  //   .to_string()
+  "./signal.db3".to_string()
 }
 
 // #[tokio::main(flavor = "multi_thread")]
@@ -625,7 +626,7 @@ async fn receive(
 
 pub fn link_device(servers: SignalServers, device_name: String, output: mpsc::UnboundedSender<Action>) {
   spawn_local(async move {
-    let db_path = "./plzwork.db3";
+    let db_path = default_db_path();
 
     let config_store =
       SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust)
@@ -639,8 +640,8 @@ pub fn link_device(servers: SignalServers, device_name: String, output: mpsc::Un
 
     let manager = future::join(
       async move {
-        sleep(Duration::from_secs(2)).await;
-        Logger::log(format!("this isnt even my fault ..."));
+        // sleep(Duration::from_secs(2)).await;
+        // Logger::log(format!("this isnt even my fault ..."));
         Manager::link_secondary_device(config_store, servers, device_name, provisioning_link_tx).await
       },
       async move {
