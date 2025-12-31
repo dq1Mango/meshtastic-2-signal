@@ -99,7 +99,6 @@ fn handle_from_radio_packet(
       println!("Received channel packet: {:?}", channel);
     }
     meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(node_info) => {
-      Logger::log(format!("does this seem right? {}", node_info.num));
       nodes.insert(node_info.num, node_info);
     }
     meshtastic::protobufs::from_radio::PayloadVariant::Packet(mesh_packet) => {
@@ -218,7 +217,8 @@ fn handle_mesh_packet(
 }
 
 pub type MyManager = Manager<SqliteStore, presage::manager::Registered>;
-// #[derive(Debug, Default)]
+
+#[derive(Debug)]
 pub struct Model {
   running_state: RunningState,
   contacts: Contacts,
@@ -226,6 +226,22 @@ pub struct Model {
   // groups: Vec<Group,
   // chat_index: usize,
   account: Account,
+}
+
+impl Model {
+  fn init(manager: &mut MyManager) -> Self {
+    Model {
+      account: Account {
+        name: "nan".to_string(),
+        username: "nan".to_string(),
+        number: PhoneNumber("idc".to_string()),
+        uuid: manager.registration_data().service_ids.aci,
+      },
+      groups: Default::default(),
+      contacts: Default::default(),
+      running_state: Default::default(),
+    }
+  }
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -313,6 +329,7 @@ pub struct Settings {
   _identity: String,
 }
 
+#[derive(Debug)]
 struct Account {
   name: String,
   username: String,
@@ -481,7 +498,7 @@ async fn main() -> anyhow::Result<()> {
 
   Logger::log("Linked!!!");
 
-  let manager = Manager::load_registered(config_store)
+  let mut manager = Manager::load_registered(config_store)
     .await
     .expect("failed to make the manager");
 
@@ -492,6 +509,8 @@ async fn main() -> anyhow::Result<()> {
   }
 
   let config = parse_config();
+
+  let mut model = Model::init(&mut manager);
 
   let spawner = SignalSpawner::new(manager, action_tx.clone());
 
@@ -538,12 +557,25 @@ async fn main() -> anyhow::Result<()> {
   // the attached serial port.
   Logger::log("listening for mesh packets...");
   loop {
-    let soon_to_be_legacy = decoded_listener.recv().await;
+    // let soon_to_be_legacy = decoded_listener.recv().await;
 
-    let mut current_action = if let Some(decdoed) = soon_to_be_legacy {
-      Some(Action::FromRadio(decdoed))
-    } else {
-      break;
+    // let mut current_action = if let Some(decdoed) = soon_to_be_legacy {
+    //   Some(Action::FromRadio(decdoed))
+    // } else {
+    //   break;
+    // };
+
+    let mut current_action = tokio::select! {
+      decoded = decoded_listener.recv() => {
+        if let Some(decdoed) = decoded {
+          Some(Action::FromRadio(decdoed))
+        } else {
+        break;
+      }}
+
+      action = action_rx.recv() => {
+        action
+      }
     };
 
     while let Some(action) = current_action {
@@ -584,6 +616,15 @@ async fn main() -> anyhow::Result<()> {
           });
           None
         }
+        Action::Receive(received) => match received {
+          Received::Content(content) => handle_message(&mut model, &config, *content),
+          Received::Contacts => {
+            None
+            // update our in memory cache of contacts
+            // _ = update_contacts(model, spawner).await;
+          }
+          Received::QueueEmpty => None,
+        },
         _ => None,
       }
     }

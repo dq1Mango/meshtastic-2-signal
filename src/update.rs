@@ -57,37 +57,37 @@ pub enum Action {
   Quit,
 }
 
-pub async fn update(model: &mut Model, msg: Action, spawner: &SignalSpawner) -> Option<Action> {
-  match msg {
-    // Action::SetFocus(new_focus) => model.focus = new_focus,
-    Action::Receive(received) => match received {
-      Received::Content(content) => {
-        return handle_message(model, *content);
-      }
-      Received::Contacts => {
-        // update our in memory cache of contacts
-        _ = update_contacts(model, spawner).await;
-      }
-      Received::QueueEmpty => {}
-    },
-
-    Action::ReceiveBatch(received) => {
-      for message in received {
-        handle_message(model, message);
-      }
-    }
-
-    Action::Quit => {
-      // You can handle cleanup and exit here
-      // -- im ok thanks tho
-      model.running_state = RunningState::OhShit;
-    }
-
-    _ => {}
-  }
-
-  None
-}
+// pub async fn update(model: &mut Model, msg: Action, spawner: &SignalSpawner) -> Option<Action> {
+//   match msg {
+//     // Action::SetFocus(new_focus) => model.focus = new_focus,
+//     Action::Receive(received) => match received {
+//       Received::Content(content) => {
+//         return handle_message(model, *content);
+//       }
+//       Received::Contacts => {
+//         // update our in memory cache of contacts
+//         _ = update_contacts(model, spawner).await;
+//       }
+//       Received::QueueEmpty => {}
+//     },
+//
+//     Action::ReceiveBatch(received) => {
+//       for message in received {
+//         handle_message(model, message);
+//       }
+//     }
+//
+//     Action::Quit => {
+//       // You can handle cleanup and exit here
+//       // -- im ok thanks tho
+//       model.running_state = RunningState::OhShit;
+//     }
+//
+//     _ => {}
+//   }
+//
+//   None
+// }
 
 // pub fn handle_option(
 //   model: &mut Model,
@@ -166,7 +166,7 @@ pub async fn update(model: &mut Model, msg: Action, spawner: &SignalSpawner) -> 
 //   }
 // }
 
-fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
+pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> Option<Action> {
   // Logger::log(format!("DataMessage: {:#?}", content.clone()));
 
   let ts = content.timestamp();
@@ -177,11 +177,34 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
     return None;
   };
 
+  if let Thread::Group(group_key) = thread {
+    if group_key != config.group_key {
+      return None;
+    }
+  } else {
+    return None;
+  }
+
   match content.body {
     ContentBody::DataMessage(DataMessage {
-      body: Some(_body),
+      body: Some(body),
       quote,
       reaction,
+      ..
+    })
+    | ContentBody::SynchronizeMessage(SyncMessage {
+      sent:
+        Some(Sent {
+          message:
+            Some(DataMessage {
+              body: Some(body),
+              quote,
+              reaction,
+              ..
+            }),
+          ..
+        }),
+      // read: read,
       ..
     }) => {
       // Logger::log(format!("DataMessage: {:#?}", body.clone()));
@@ -212,6 +235,18 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
       } else {
         vec![]
       };
+
+      let mut message: String = format!("{:?}", content.metadata.sender);
+      message.push_str(":\n");
+      message.push_str(&body);
+
+      Logger::log("broadcasting to mesh...");
+
+      return Some(Action::SendToMesh {
+        body: message,
+        channel: 1.into(),
+        destination: PacketDestination::Broadcast,
+      });
 
       // insert_message(model, data, thread, ts, mine)
     }
