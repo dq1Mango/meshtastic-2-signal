@@ -3,6 +3,10 @@ custom-build-command.sh
 /.venv
 release
 
+signal.db3
+
+log.txt
+
 # Added by cargo
 
-/target
+target/
