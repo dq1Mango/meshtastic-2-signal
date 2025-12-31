@@ -324,7 +324,11 @@ fn draw_linking_screen(url: &Option<Url>) {
       match qr {
         Ok(qr) => {
           // size = qr.size() as u16;
+          print!("\x1b[37m");
+          println!("{}", "██".repeat(qr.size() as usize + 2));
           for y in 0..qr.size() {
+            print!("\x1b[37m");
+            print!("██");
             for x in 0..qr.size() {
               match qr.get_module(x, y) {
                 true => print!("\x1b[30m"),
@@ -333,8 +337,14 @@ fn draw_linking_screen(url: &Option<Url>) {
               print!("██");
               // (... paint qr.get_module(x, y) ...)
             }
+
+            print!("\x1b[37m");
+            print!("██");
             println!();
           }
+
+          print!("\x1b[37m");
+          println!("{}", "██".repeat(qr.size() as usize + 2));
         }
 
         Err(_) => println!("Error generating qrcode (tough shit pal)"),
@@ -367,7 +377,7 @@ async fn main() -> anyhow::Result<()> {
   if !config_store.is_registered().await {
     link_device(
       SignalServers::Production,
-      "terminal enjoyer".to_string(),
+      "meshtastic-2-signal".to_string(),
       action_tx.clone(),
     );
 
