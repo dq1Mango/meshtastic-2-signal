@@ -4,12 +4,10 @@ mod signal;
 mod update;
 
 use std::{
-  cmp,
   collections::HashMap,
   fmt::Debug,
   hash::Hash,
-  io::{self, Stdout},
-  sync::{Arc, Mutex},
+  sync::Arc,
   vec,
 };
 
@@ -18,7 +16,6 @@ use presage::{
     Profile,
     configuration::SignalServers,
     prelude::{ProfileKey, Uuid},
-    proto,
     zkgroup::GroupMasterKeyBytes,
   },
   model::groups::Group,
@@ -27,11 +24,11 @@ use presage::{
 
 use presage::manager::Manager;
 use presage::model::messages::Received;
-use presage::store::{StateStore, Store};
+use presage::store::StateStore;
 use presage_store_sqlite::{OnNewIdentity, SqliteStore};
 // use crate::database::{OnNewIdentity, SqliteStore};
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::DateTime;
 use tokio::sync::mpsc;
 use url::Url;
 // use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
@@ -42,7 +39,7 @@ use qrcodegen::QrCodeEcc;
 use crate::signal::default_db_path;
 use crate::signal::link_device;
 use crate::update::*;
-use crate::{logger::Logger, mysignal::SignalSpawner, signal::Cmd, update::LinkingAction};
+use crate::{logger::Logger, mysignal::SignalSpawner, update::LinkingAction};
 
 /// This example connects to a radio via serial and prints out all received packets.
 /// This example requires a powered and flashed Meshtastic radio.
@@ -50,12 +47,10 @@ use crate::{logger::Logger, mysignal::SignalSpawner, signal::Cmd, update::Linkin
 // use std::io::{self, BufRead};
 mod dumb_packet_router;
 use dumb_packet_router::DumbPacketRouter;
-use dumb_packet_router::MyError;
 
 use meshtastic::api::StreamApi;
 use meshtastic::packet::PacketDestination;
 use meshtastic::protobufs::FromRadio;
-use meshtastic::types::EncodedMeshPacketData;
 use meshtastic::types::MeshChannel;
 use meshtastic::utils;
 
@@ -87,7 +82,7 @@ type Nodes = HashMap<usize, meshtastic::protobufs::NodeInfo>;
 /// variant can be `None`, in which case the packet should be ignored.
 fn handle_from_radio_packet(
   from_radio_packet: meshtastic::protobufs::FromRadio,
-  nodes: &mut Nodes,
+  _nodes: &mut Nodes,
 ) -> Option<Action> {
   // let cloned_packet = from_radio_packet.clone();
   // Remove `None` variants to get the payload variant
@@ -106,7 +101,7 @@ fn handle_from_radio_packet(
     meshtastic::protobufs::from_radio::PayloadVariant::Channel(channel) => {
       println!("Received channel packet: {:?}", channel);
     }
-    meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(node_info) => {
+    meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(_node_info) => {
       // println!("Received node info packet: {:?}", node_info);
     }
     meshtastic::protobufs::from_radio::PayloadVariant::Packet(mesh_packet) => {
@@ -128,7 +123,7 @@ fn handle_from_radio_packet(
 /// Mesh packets are the most commonly used type of packet, and are usually
 /// what people are referring to when they talk about "packets."
 fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
-  let cloned_packet = mesh_packet.clone();
+  let _cloned_packet = mesh_packet.clone();
   // Remove `None` variants to get the payload variant
 
   // Only handle decoded (unencrypted) mesh packets
@@ -314,9 +309,9 @@ struct Account {
 }
 
 fn draw_linking_screen(url: &Option<Url>) {
-  let block = "██";
+  let _block = "██";
 
-  let mut size: u16 = 1;
+  let _size: u16 = 1;
 
   match &url {
     Some(url) => {
@@ -433,7 +428,7 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to make the manager");
 
-  let spawner = SignalSpawner::new(manager, action_tx.clone());
+  let _spawner = SignalSpawner::new(manager, action_tx.clone());
 
   let stream_api = StreamApi::new();
 

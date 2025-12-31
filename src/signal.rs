@@ -11,14 +11,11 @@ use anyhow::{Context as _, anyhow, bail};
 use base64::prelude::*;
 use chrono::Local;
 use chrono::Utc;
-use directories::ProjectDirs;
 use futures::StreamExt;
 use futures::{channel::oneshot, future, pin_mut};
 use mime_guess::mime::APPLICATION_OCTET_STREAM;
 use notify_rust::Notification;
-use presage::Error;
 use presage::libsignal_service::configuration::SignalServers;
-use presage::libsignal_service::content::Metadata;
 use presage::libsignal_service::content::Reaction;
 use presage::libsignal_service::pre_keys::PreKeysStore;
 use presage::libsignal_service::prelude::ProfileKey;
@@ -48,7 +45,6 @@ use presage::{
   store::{Store, Thread},
 };
 use presage_store_sqlite::SqliteStore;
-use presage_store_sqlite::SqliteStoreError;
 // use presage_store_sqlite::SqliteStoreError;
 // use crate::database::SqliteStore;
 // use crate::database::SqliteStoreError;
@@ -65,7 +61,6 @@ use tracing::warn;
 use tracing::{error, info};
 use url::Url;
 
-use crate::Model;
 use crate::MyManager;
 use crate::Profile;
 use crate::logger::Logger;

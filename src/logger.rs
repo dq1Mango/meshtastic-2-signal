@@ -53,7 +53,7 @@ impl Logger {
   }
 
   pub fn log(log: impl fmt::Display) {
-    let mut file = OpenOptions::new()
+    let _file = OpenOptions::new()
       .append(true)
       .create(true)
       .open(FILE_NAME)

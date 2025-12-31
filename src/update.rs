@@ -1,16 +1,12 @@
 use presage::proto::data_message::{self, Quote};
 use presage::proto::sync_message::Sent;
-use tokio::sync::mpsc::UnboundedSender;
 
-use chrono::TimeDelta;
 
-use futures::{StreamExt, future::FutureExt};
 
 // use presage::model::messages::Received;
 use presage::libsignal_service::content::{Content, ContentBody};
 use presage::libsignal_service::prelude::ProfileKey;
-use presage::proto::receipt_message::Type;
-use presage::proto::{DataMessage, ReceiptMessage, SyncMessage};
+use presage::proto::{DataMessage, SyncMessage};
 use presage::store::ContentExt;
 use presage::store::Thread;
 
@@ -170,7 +166,7 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
   // Logger::log(format!("DataMessage: {:#?}", content.clone()));
 
   let ts = content.timestamp();
-  let timestamp = DateTime::from_timestamp_millis(ts as i64).expect("this happens too often");
+  let _timestamp = DateTime::from_timestamp_millis(ts as i64).expect("this happens too often");
 
   let Ok(mut thread) = Thread::try_from(&content) else {
     Logger::log("failed to derive thread from content".to_string());
@@ -179,7 +175,7 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
 
   match content.body {
     ContentBody::DataMessage(DataMessage {
-      body: Some(body),
+      body: Some(_body),
       quote,
       reaction,
       ..
@@ -194,13 +190,13 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
         }
       }
 
-      let quote = if let Some(Quote { id, .. }) = quote {
+      let _quote = if let Some(Quote { id, .. }) = quote {
         id
       } else {
         None
       };
 
-      let reactions = if let Some(data_message::Reaction {
+      let _reactions = if let Some(data_message::Reaction {
         emoji: Some(emoji), ..
       }) = reaction
       {
@@ -223,8 +219,8 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
             Some(Sent {
               message:
                 Some(DataMessage {
-                  body: Some(body),
-                  quote,
+                  body: Some(_body),
+                  quote: _,
                   ..
                 }),
               ..
@@ -265,11 +261,11 @@ fn handle_message(model: &mut Model, content: Content) -> Option<Action> {
 
       if let data_message::Reaction {
         emoji: Some(emoji),
-        target_sent_timestamp: Some(target_ts),
+        target_sent_timestamp: Some(_target_ts),
         ..
       } = reaction
       {
-        let reaction = Reaction {
+        let _reaction = Reaction {
           emoji: emoji.chars().nth(0)?,
           author: content.metadata.sender.raw_uuid(),
         };
