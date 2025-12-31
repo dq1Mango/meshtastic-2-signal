@@ -360,7 +360,7 @@ fn draw_linking_screen(url: &Option<Url>) {
 #[tokio::main(flavor = "local")]
 async fn main() -> anyhow::Result<()> {
   let (action_tx, mut action_rx) = mpsc::unbounded_channel();
-  let db_path = "/home/mqngo/Coding/soMuchSignal/signal.db3";
+  let db_path = "./signal.db3";
   let mut config_store =
     SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
 

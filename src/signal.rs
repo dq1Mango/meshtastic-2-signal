@@ -625,7 +625,7 @@ async fn receive(
 
 pub fn link_device(servers: SignalServers, device_name: String, output: mpsc::UnboundedSender<Action>) {
   spawn_local(async move {
-    let db_path = "/home/mqngo/Coding/rust/signal-tui/plzwork.db3";
+    let db_path = "./plzwork.db3";
 
     let config_store =
       SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust)
