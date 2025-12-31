@@ -33,5 +33,5 @@ curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag 
 # linker = "aarch64-linux-gnu-gcc"
 
 [package.metadata.cross.target.aarch64-unknown-linux-gnu]
-pre-build = ["apt-get install --assume-yes protobuf-compiler && protoc --version && false"]
-# pre-build = ["PB_REL='https://github.com/protocolbuffers/protobuf/releases' && curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-aarch64.zip && unzip protoc-30.2-linux-aarch.zip -d $HOME/.local && export PATH='$PATH:$HOME/.local/bin'"]
+# pre-build = ["apt-get install --assume-yes protobuf-compiler && protoc --version && false"]
+pre-build = ["apt-get install --assume-yes zip && PB_REL='https://github.com/protocolbuffers/protobuf/releases' && curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-aarch_64.zip && unzip protoc-30.2-linux-aarch_64.zip -d $HOME/.local && export PROTOC='$HOME/.local/bin/protoc' && apt-get install --assume-yes openssl libssl-dev"]
