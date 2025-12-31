@@ -4,6 +4,7 @@ custom-build-command.sh
 release
 
 signal.db3
+config.toml
 
 log.txt
 

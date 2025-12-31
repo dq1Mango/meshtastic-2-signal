@@ -1,8 +1,6 @@
 use presage::proto::data_message::{self, Quote};
 use presage::proto::sync_message::Sent;
 
-
-
 // use presage::model::messages::Received;
 use presage::libsignal_service::content::{Content, ContentBody};
 use presage::libsignal_service::prelude::ProfileKey;
@@ -40,7 +38,13 @@ pub enum Action {
     channel: MeshChannel,
     destination: PacketDestination,
   },
+
   FromRadio(FromRadio),
+
+  SendToGroup {
+    message: String,
+    master_key: GroupMasterKeyBytes,
+  },
 
   PickOption,
   DoOption(MessageOption),

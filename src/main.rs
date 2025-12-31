@@ -3,13 +3,8 @@ mod mysignal;
 mod signal;
 mod update;
 
-use std::{
-  collections::HashMap,
-  fmt::Debug,
-  hash::Hash,
-  sync::Arc,
-  vec,
-};
+use std::io::prelude::*;
+use std::{collections::HashMap, fmt::Debug, fs::File, hash::Hash, sync::Arc, vec};
 
 use presage::{
   libsignal_service::{
@@ -28,7 +23,8 @@ use presage::store::StateStore;
 use presage_store_sqlite::{OnNewIdentity, SqliteStore};
 // use crate::database::{OnNewIdentity, SqliteStore};
 
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use url::Url;
 // use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
@@ -36,8 +32,8 @@ use url::Url;
 use qrcodegen::QrCode;
 use qrcodegen::QrCodeEcc;
 // use crate::signal::*;
-use crate::signal::default_db_path;
-use crate::signal::link_device;
+use crate::signal::{Cmd, link_device};
+use crate::signal::{default_db_path, list_groups};
 use crate::update::*;
 use crate::{logger::Logger, mysignal::SignalSpawner, update::LinkingAction};
 
@@ -50,7 +46,7 @@ use dumb_packet_router::DumbPacketRouter;
 
 use meshtastic::api::StreamApi;
 use meshtastic::packet::PacketDestination;
-use meshtastic::protobufs::FromRadio;
+use meshtastic::protobufs::{FromRadio, NodeInfo, User, mesh_packet};
 use meshtastic::types::MeshChannel;
 use meshtastic::utils;
 
@@ -59,7 +55,7 @@ use meshtastic::utils;
 use meshtastic::Message;
 use meshtastic::protobufs;
 
-type Nodes = HashMap<usize, meshtastic::protobufs::NodeInfo>;
+type Nodes = HashMap<u32, meshtastic::protobufs::NodeInfo>;
 
 // #[tokio::main]
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -82,7 +78,8 @@ type Nodes = HashMap<usize, meshtastic::protobufs::NodeInfo>;
 /// variant can be `None`, in which case the packet should be ignored.
 fn handle_from_radio_packet(
   from_radio_packet: meshtastic::protobufs::FromRadio,
-  _nodes: &mut Nodes,
+  config: &Config,
+  nodes: &mut Nodes,
 ) -> Option<Action> {
   // let cloned_packet = from_radio_packet.clone();
   // Remove `None` variants to get the payload variant
@@ -101,14 +98,15 @@ fn handle_from_radio_packet(
     meshtastic::protobufs::from_radio::PayloadVariant::Channel(channel) => {
       println!("Received channel packet: {:?}", channel);
     }
-    meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(_node_info) => {
-      // println!("Received node info packet: {:?}", node_info);
+    meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(node_info) => {
+      Logger::log(format!("does this seem right? {}", node_info.num));
+      nodes.insert(node_info.num, node_info);
     }
     meshtastic::protobufs::from_radio::PayloadVariant::Packet(mesh_packet) => {
-      return handle_mesh_packet(mesh_packet);
+      return handle_mesh_packet(mesh_packet, nodes, config);
     }
     _ => {
-      println!("Received other FromRadio packet, not handling...");
+      // println!("Received other FromRadio packet, not handling...");
     }
   };
 
@@ -122,15 +120,19 @@ fn handle_from_radio_packet(
 ///
 /// Mesh packets are the most commonly used type of packet, and are usually
 /// what people are referring to when they talk about "packets."
-fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
-  let _cloned_packet = mesh_packet.clone();
+fn handle_mesh_packet(
+  mesh_packet: protobufs::MeshPacket,
+  nodes: &Nodes,
+  config: &Config,
+) -> Option<Action> {
+  let cloned_packet = mesh_packet.clone();
   // Remove `None` variants to get the payload variant
 
   // Only handle decoded (unencrypted) mesh packets
   let packet_data = match mesh_packet.payload_variant {
     Some(protobufs::mesh_packet::PayloadVariant::Decoded(decoded_mesh_packet)) => decoded_mesh_packet,
     Some(protobufs::mesh_packet::PayloadVariant::Encrypted(_encrypted_mesh_packet)) => {
-      println!("Received encrypted mesh packet, not handling...");
+      // println!("Received encrypted mesh packet, not handling...");
       return None;
     }
     None => {
@@ -182,6 +184,18 @@ fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
             destination: PacketDestination::Broadcast,
           });
         }
+
+        let mut message: String = match &nodes[&mesh_packet.from].user {
+          Some(usr) => usr.long_name.clone(),
+          None => mesh_packet.from.to_string(),
+        };
+        message.push_str(":\n");
+        message.push_str(&decoded_text_message);
+
+        return Some(Action::SendToGroup {
+          message,
+          master_key: config.group_key,
+        });
       }
       _ => println!("invalid portnum but also shouldnt see this"),
     },
@@ -296,8 +310,6 @@ pub struct Chat {
 }
 
 pub struct Settings {
-  borders: bool,
-  message_width_ratio: f32,
   _identity: String,
 }
 
@@ -360,6 +372,51 @@ fn draw_linking_screen(url: &Option<Url>) {
 
     None => println!("Generating Linking Url ..."),
   }
+}
+
+#[derive(Deserialize, Serialize)]
+struct RawConfig {
+  group_key: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct Config {
+  group_key: GroupMasterKeyBytes,
+}
+
+impl From<RawConfig> for Config {
+  fn from(value: RawConfig) -> Self {
+    let almost_key =
+      hex::decode(value.group_key).expect("failed to parse key\nshould parese to a [u8; 32]");
+    if almost_key.len() != 32 {
+      panic!("incorrect key length: {}", almost_key.len());
+    }
+    let mut key: [u8; 32] = [0; 32];
+    for (index, byte) in almost_key.iter().enumerate() {
+      key[index] = *byte;
+    }
+    // let key: GroupMasterKeyBytes = key;
+
+    Config { group_key: key }
+  }
+}
+
+fn parse_config() -> Config {
+  let mut file = match File::open("config.toml") {
+    Ok(f) => f,
+    Err(err) => {
+      eprintln!("unable to open file 'config.toml'");
+      eprintln!("heres an error also {}", err);
+      panic!();
+    }
+  };
+  let mut contents = String::new();
+  file
+    .read_to_string(&mut contents)
+    .expect("cmon no way this fails");
+
+  let raw: RawConfig = toml::from_str(&contents).expect("failed to parse config file");
+  raw.into()
 }
 
 #[allow(unexpected_cfgs)]
@@ -428,7 +485,15 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to make the manager");
 
-  let _spawner = SignalSpawner::new(manager, action_tx.clone());
+  let groups = list_groups(&manager).await;
+  println!("heres the groups for ur convenience: ");
+  for group in groups {
+    println!("key: {}, title; {}", hex::encode(group.0), group.1.title);
+  }
+
+  let config = parse_config();
+
+  let spawner = SignalSpawner::new(manager, action_tx.clone());
 
   let stream_api = StreamApi::new();
 
@@ -444,7 +509,8 @@ async fn main() -> anyhow::Result<()> {
   let config_id = utils::generate_rand_id();
   let mut stream_api = stream_api.configure(config_id).await?;
 
-  let mut nodes = HashMap::<usize, meshtastic::protobufs::NodeInfo>::new();
+  // let mut nodes = HashMap::<u32, meshtastic::protobufs::NodeInfo>::new();
+  let mut nodes = Nodes::new();
 
   // let channel_config = protobufs::Channel {
   //   index: 1,
@@ -482,7 +548,7 @@ async fn main() -> anyhow::Result<()> {
 
     while let Some(action) = current_action {
       current_action = match action {
-        Action::FromRadio(decoded) => handle_from_radio_packet(decoded, &mut nodes),
+        Action::FromRadio(decoded) => handle_from_radio_packet(decoded, &config, &mut nodes),
 
         Action::SendToMesh {
           body,
@@ -507,6 +573,15 @@ async fn main() -> anyhow::Result<()> {
               )
               .await
           );
+          None
+        }
+        Action::SendToGroup { message, master_key } => {
+          spawner.spawn(Cmd::SendToGroup {
+            message,
+            master_key,
+            timestamp: Utc::now().timestamp_millis() as u64,
+            attachment_filepath: vec![],
+          });
           None
         }
         _ => None,
