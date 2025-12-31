@@ -39,14 +39,12 @@ pub enum MessageOption {
 // the important one
 #[derive(Debug)]
 pub enum Action {
-  Type(char),
-  Backspace,
-  Send,
-  Nvm,
-
-  Scroll(isize),
-  ScrollGroup(isize),
-  ScrollOptions(isize),
+  SendToMesh {
+    body: String,
+    channel: MeshChannel,
+    destination: PacketDestination,
+  },
+  FromRadio(FromRadio),
 
   PickOption,
   DoOption(MessageOption),

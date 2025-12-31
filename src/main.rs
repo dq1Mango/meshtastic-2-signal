@@ -1,3 +1,48 @@
+mod logger;
+mod mysignal;
+mod signal;
+mod update;
+
+use std::{
+  cmp,
+  collections::HashMap,
+  fmt::Debug,
+  hash::Hash,
+  io::{self, Stdout},
+  sync::{Arc, Mutex},
+  vec,
+};
+
+use presage::{
+  libsignal_service::{
+    Profile,
+    configuration::SignalServers,
+    prelude::{ProfileKey, Uuid},
+    proto,
+    zkgroup::GroupMasterKeyBytes,
+  },
+  model::groups::Group,
+  store::Thread,
+};
+
+use presage::manager::Manager;
+use presage::model::messages::Received;
+use presage::store::{StateStore, Store};
+use presage_store_sqlite::{OnNewIdentity, SqliteStore};
+// use crate::database::{OnNewIdentity, SqliteStore};
+
+use chrono::{DateTime, TimeDelta, Utc};
+use tokio::sync::mpsc;
+use url::Url;
+// use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
+
+use qrcodegen::QrCode;
+use qrcodegen::QrCodeEcc;
+// use crate::signal::*;
+use crate::signal::link_device;
+use crate::update::*;
+use crate::{logger::Logger, mysignal::SignalSpawner, signal::Cmd, update::LinkingAction};
+
 /// This example connects to a radio via serial and prints out all received packets.
 /// This example requires a powered and flashed Meshtastic radio.
 /// https://meshtastic.org/docs/supported-hardware
@@ -18,121 +63,20 @@ use meshtastic::utils;
 use meshtastic::Message;
 use meshtastic::protobufs;
 
-use std::collections::HashMap;
-
-// use tokio::select;
-pub enum Action {
-  SendToMesh {
-    body: String,
-    channel: MeshChannel,
-    destination: PacketDestination,
-  },
-  FromRadio(FromRadio),
-}
-
 type Nodes = HashMap<usize, meshtastic::protobufs::NodeInfo>;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let stream_api = StreamApi::new();
-
-  let available_ports = utils::stream::available_serial_ports()?;
-  println!("Available ports: {:?}", available_ports);
-  // println!("Enter the name of a port to connect to:");
-  //
-  // let stdin = io::stdin();
-  // let entered_port = stdin
-  //   .lock()
-  //   .lines()
-  //   .next()
-  //   .expect("Failed to find next line")
-  //   .expect("Could not read next line");
-  let port = String::from("/dev/ttyACM0");
-
-  let serial_stream = utils::stream::build_serial_stream(port, None, None, None)?;
-  let (mut decoded_listener, stream_api) = stream_api.connect(serial_stream).await;
-
-  let config_id = utils::generate_rand_id();
-  let mut stream_api = stream_api.configure(config_id).await?;
-
-  let mut nodes = HashMap::<usize, meshtastic::protobufs::NodeInfo>::new();
-
-  // let channel_config = protobufs::Channel {
-  //   index: 1,
-  //   settings: Some(ChannelSettings {
-  //     psk: vec![],
-  //     name: "gateway".to_string(),
-  //     id: 67,
-  //     uplink_enabled: true,
-  //     downlink_enabled: true,
-  //     module_settings: None,
-  //     channel_num: 0,
-  //   }),
-  //   role: 2,
-  // };
-
-  let mut packet_router = DumbPacketRouter;
-  // println!(
-  //   "{:?}",
-  //   stream_api
-  //     .update_channel_config::<String, MyError, DumbPacketRouter>(&mut packet_router, channel_config)
-  //     .await
-  // );
-
-  // This loop can be broken with ctrl+c or by disconnecting
-  // the attached serial port.
-
-  loop {
-    let soon_to_be_legacy = decoded_listener.recv().await;
-
-    let mut current_action = if let Some(decdoed) = soon_to_be_legacy {
-      Some(Action::FromRadio(decdoed))
-    } else {
-      break;
-    };
-
-    while let Some(action) = current_action {
-      current_action = match action {
-        Action::FromRadio(decoded) => handle_from_radio_packet(decoded, &mut nodes),
-
-        Action::SendToMesh {
-          body,
-          channel,
-          destination,
-        } => {
-          println!("\tsending to mesh...");
-          println!(
-            "{:?}",
-            stream_api
-              .send_mesh_packet(
-                &mut packet_router,
-                body.into_bytes().into(),
-                protobufs::PortNum::TextMessageApp,
-                destination,
-                channel,
-                true,
-                false,
-                true,
-                None,
-                None,
-              )
-              .await
-          );
-          None
-        }
-      }
-    }
-  }
-  // println!("Received: {:?}", decoded);
-
-  // Note that in this specific example, this will only be called when
-  // the radio is disconnected, as the above loop will never exit.
-  // Typically, you would allow the user to manually kill the loop,
-  // for example, with tokio::select!.
-  let _stream_api = stream_api.disconnect().await?;
-
-  Ok(())
-}
+// #[tokio::main]
+// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//   // println!("Received: {:?}", decoded);
+//
+//   // Note that in this specific example, this will only be called when
+//   // the radio is disconnected, as the above loop will never exit.
+//   // Typically, you would allow the user to manually kill the loop,
+//   // for example, with tokio::select!.
+//   let _stream_api = stream_api.disconnect().await?;
+//
+//   Ok(())
+// }
 
 // fn print_node_info(info: protobufs::NodeInfo) {}
 
@@ -208,7 +152,8 @@ fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
       // This data needs to be decoded into a protobuf struct, which is shown below.
       // The `decode` function is provided by the `prost` crate, which is re-exported
       // by the `meshtastic` crate.
-      let decoded_position = meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
+      let decoded_position =
+        meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
 
       println!("Received position packet: {:?}", decoded_position);
     }
@@ -246,7 +191,8 @@ fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
     },
 
     meshtastic::protobufs::PortNum::WaypointApp => {
-      let decoded_waypoint = meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();
+      let decoded_waypoint =
+        meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();
 
       println!("Received waypoint packet: {:?}", decoded_waypoint);
     }
@@ -259,4 +205,306 @@ fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket) -> Option<Action> {
   }
 
   None
+}
+
+pub type MyManager = Manager<SqliteStore, presage::manager::Registered>;
+// #[derive(Debug, Default)]
+pub struct Model {
+  running_state: RunningState,
+  contacts: Contacts,
+  groups: Groups,
+  // groups: Vec<Group,
+  // chat_index: usize,
+  account: Account,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub enum RunningState {
+  #[default]
+  Running,
+  OhShit,
+}
+
+// #[derive(Debug, Default)]
+// pub struct TimeStamps {
+//   sent: DateTime<Utc>,
+//   recieved: Option<DateTime<Utc>>,
+//   readby: Option<Vec<(Contact, DateTime<Utc>)>>,
+// }
+
+#[derive(Debug)]
+pub enum ReceiptType {
+  Delivered,
+  Read,
+}
+
+#[derive(Debug, Clone)]
+pub struct Reaction {
+  emoji: char,
+  author: Uuid,
+}
+
+// pub struct MyImageWrapper(StatefulProtocol);
+
+// sshhhhhh
+// impl Debug for MyImageWrapper {
+//   fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//     Ok(())
+//   }
+// }
+
+#[derive(Hash, PartialEq, Eq, Debug)]
+struct PhoneNumber(String);
+
+impl Clone for PhoneNumber {
+  fn clone(&self) -> Self {
+    PhoneNumber(self.0.clone())
+  }
+}
+
+#[derive(Debug, Default)]
+struct MyGroup {
+  name: String,
+  // icon: Option<MyImageWrapper>,
+  _description: String,
+  num_members: usize,
+}
+
+// #[derive(Debug, Default)]
+// pub struct Contact {
+//   _name: String,
+//   nick_name: String,
+//   // pfp: Option<MyImageWrapper>,
+//   // icon: Image,
+// }
+
+type Contacts = Arc<HashMap<Uuid, Profile>>;
+type Groups = Arc<HashMap<GroupMasterKeyBytes, Group>>;
+
+#[derive(Debug)]
+struct MessageOptions {
+  opened: bool,
+  index: usize,
+  timestamp: u64,
+  mine: bool,
+  // my_actions: Vec<Action>,
+  // not_my_actions: Vec<Action>,
+}
+
+#[derive(Debug)]
+pub struct Chat {
+  thread: Thread,
+  display: MyGroup,
+  // a little convenience field so u dont have to get that hash map every time
+  // thread: Thread
+}
+
+pub struct Settings {
+  borders: bool,
+  message_width_ratio: f32,
+  _identity: String,
+}
+
+struct Account {
+  name: String,
+  username: String,
+  number: PhoneNumber,
+  uuid: Uuid,
+}
+
+fn draw_linking_screen(url: &Option<Url>) {
+  let block = "██";
+
+  let mut size: u16 = 1;
+
+  match &url {
+    Some(url) => {
+      let qr = QrCode::encode_text(&url.to_string(), QrCodeEcc::Medium);
+
+      match qr {
+        Ok(qr) => {
+          // size = qr.size() as u16;
+          for y in 0..qr.size() {
+            for x in 0..qr.size() {
+              match qr.get_module(x, y) {
+                true => print!("\x1b[30m"),
+                false => print!("\x1b[37m"),
+              }
+              print!("██");
+              // (... paint qr.get_module(x, y) ...)
+            }
+            println!();
+          }
+        }
+
+        Err(_) => println!("Error generating qrcode (tough shit pal)"),
+      }
+      // let raw_url = vec![Line::from("Or visit the raw url:"), Line::from(url.to_string())];
+      println!("Or visit the raw url: {}", url.to_string());
+      // Paragraph::new(raw_url).render(
+      //   Rect {
+      //     x: area.x,
+      //     y: area.y + size,
+      //     width: area.width,
+      //     height: area.height - size,
+      //   },
+      //   buffer,
+      // );
+    }
+
+    None => println!("Generating Linking Url ..."),
+  }
+}
+
+#[allow(unexpected_cfgs)]
+#[tokio::main(flavor = "local")]
+async fn main() -> anyhow::Result<()> {
+  let (action_tx, mut action_rx) = mpsc::unbounded_channel();
+  let db_path = "/home/mqngo/Coding/soMuchSignal/signal.db3";
+  let mut config_store =
+    SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
+
+  if !config_store.is_registered().await {
+    link_device(
+      SignalServers::Production,
+      "terminal enjoyer".to_string(),
+      action_tx.clone(),
+    );
+
+    // spawner.spawn(Cmd::LinkDevice {
+    //   servers: SignalServers::Production,
+    //   device_name: "terminal enjoyer".to_string(),
+    // });
+    //
+    let mut url = None;
+
+    loop {
+      draw_linking_screen(&url);
+
+      // Handle events and map to a Message
+      let current_msg = action_rx.recv().await;
+
+      match current_msg {
+        Some(Action::Link(linking)) => match linking {
+          LinkingAction::Url(new_url) => url = Some(new_url),
+          LinkingAction::Success => break,
+          LinkingAction::Fail => link_device(
+            SignalServers::Production,
+            "meshtastic-2-signal".to_string(),
+            action_tx.clone(),
+          ),
+          //   spawner.spawn(Cmd::LinkDevice {
+          //   servers: SignalServers::Production,
+          //   device_name: "terminal enjoyer".to_string(),
+          // }),
+        },
+
+        Some(Action::Quit) => {
+          return Ok(());
+        }
+
+        Some(_) => {}
+
+        None => {
+          Logger::log("I dont think this should ever happenn".to_string());
+        }
+      }
+    }
+
+    // there probably a better way to make the store linked but this only happens once so idc
+    config_store =
+      SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
+  }
+
+  let manager = Manager::load_registered(config_store)
+    .await
+    .expect("failed to make the manager");
+
+  let spawner = SignalSpawner::new(manager, action_tx.clone());
+
+  let stream_api = StreamApi::new();
+
+  let available_ports = utils::stream::available_serial_ports()?;
+  println!("Available ports: {:?}", available_ports);
+  // println!("Enter the name of a port to connect to:");
+  //
+  let port = String::from("/dev/ttyACM0");
+
+  let serial_stream = utils::stream::build_serial_stream(port, None, None, None)?;
+  let (mut decoded_listener, stream_api) = stream_api.connect(serial_stream).await;
+
+  let config_id = utils::generate_rand_id();
+  let mut stream_api = stream_api.configure(config_id).await?;
+
+  let mut nodes = HashMap::<usize, meshtastic::protobufs::NodeInfo>::new();
+
+  // let channel_config = protobufs::Channel {
+  //   index: 1,
+  //   settings: Some(ChannelSettings {
+  //     psk: vec![],
+  //     name: "gateway".to_string(),
+  //     id: 67,
+  //     uplink_enabled: true,
+  //     downlink_enabled: true,
+  //     module_settings: None,
+  //     channel_num: 0,
+  //   }),
+  //   role: 2,
+  // };
+
+  let mut packet_router = DumbPacketRouter;
+  // println!(
+  //   "{:?}",
+  //   stream_api
+  //     .update_channel_config::<String, MyError, DumbPacketRouter>(&mut packet_router, channel_config)
+  //     .await
+  // );
+
+  // This loop can be broken with ctrl+c or by disconnecting
+  // the attached serial port.
+
+  loop {
+    let soon_to_be_legacy = decoded_listener.recv().await;
+
+    let mut current_action = if let Some(decdoed) = soon_to_be_legacy {
+      Some(Action::FromRadio(decdoed))
+    } else {
+      break;
+    };
+
+    while let Some(action) = current_action {
+      current_action = match action {
+        Action::FromRadio(decoded) => handle_from_radio_packet(decoded, &mut nodes),
+
+        Action::SendToMesh {
+          body,
+          channel,
+          destination,
+        } => {
+          println!("\tsending to mesh...");
+          println!(
+            "{:?}",
+            stream_api
+              .send_mesh_packet(
+                &mut packet_router,
+                body.into_bytes().into(),
+                protobufs::PortNum::TextMessageApp,
+                destination,
+                channel,
+                true,
+                false,
+                true,
+                None,
+                None,
+              )
+              .await
+          );
+          None
+        }
+        _ => None,
+      }
+    }
+  }
+
+  Ok(())
 }

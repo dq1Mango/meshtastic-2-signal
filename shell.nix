@@ -1,3 +1,5 @@
+# nix shell to set up cargo
+
 { pkgs ? import <nixpkgs> { } }:
 let
   overrides = (builtins.fromTOML (builtins.readFile ./rust-toolchain.toml));
@@ -11,6 +13,10 @@ in pkgs.mkShell rec {
     # Replace llvmPackages with llvmPackages_X, where X is the latest LLVM version (at the time of writing, 16)
     llvmPackages.bintools
     rustup
+
+    # dependencies
+    openssl
+    protobuf
   ];
   RUSTC_VERSION = overrides.toolchain.channel;
   # https://github.com/rust-lang/rust-bindgen#environment-variables
@@ -19,10 +25,8 @@ in pkgs.mkShell rec {
   shellHook = ''
     export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
     export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
-
+    export RUSTFLAGS="--cfg tokio_unstable"
   '';
-  #export RUSTFLAGS=$RUSTFLAGS' -C target-feature=+crt-static'
-
   # Add precompiled library to rustc search path
   RUSTFLAGS = (builtins.map (a: "-L ${a}/lib") [
     # add libraries here (e.g. pkgs.libvmi)
@@ -34,6 +38,7 @@ in pkgs.mkShell rec {
     (builtins.map (a: ''-I"${a}/include"'') [
       # add dev libraries here (e.g. pkgs.libvmi.dev)
       pkgs.glibc.dev
+      pkgs.openssl.dev
     ])
     # Includes with special directory paths
     ++ [
