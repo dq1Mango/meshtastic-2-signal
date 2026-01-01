@@ -2487,12 +2487,11 @@ dependencies = [
 [[package]]
 name = "presage-store-sqlite"
 version = "0.8.0-dev"
-source = "git+https://github.com/whisperfish/presage#66b56a7765cae7cfb83a610469562045902eb4c1"
+source = "git+https://github.com/dq1mango/signal-tui#3ae7da329189c5ade04cba87f644b70cf53d854c"
 dependencies = [
  "async-trait",
  "bytes",
  "chrono",
- "libsqlite3-sys",
  "presage",
  "prost 0.13.5",
  "serde_json",

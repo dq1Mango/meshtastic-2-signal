@@ -13,7 +13,8 @@ tracing = "0.1.41"
 url = "2.5.7"
 
 presage = { git = "https://github.com/whisperfish/presage" }
-presage-store-sqlite = { git = "https://github.com/whisperfish/presage" }
+# presage-store-sqlite = { git = "https://github.com/whisperfish/presage" }
+presage-store-sqlite = { git = "https://github.com/dq1mango/signal-tui" }
 notify-rust = "4.11.7"
 anyhow = "1.0.100"
 directories = "6.0.0"

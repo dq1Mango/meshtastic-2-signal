@@ -15,7 +15,7 @@ use crate::Uuid;
 use crate::logger::Logger;
 use crate::signal::Cmd;
 use crate::signal::attachments_tmp_dir;
-// use crate::signal::get_contacts;
+use crate::signal::get_contacts;
 use crate::signal::list_groups;
 use crate::signal::process_incoming_message;
 use crate::signal::retrieve_profile;
@@ -130,9 +130,9 @@ impl SignalSpawner {
 
         select! {
           Some(contacts_output) = contact_requests.recv() => {
-            // let contacts = get_contacts(&manager).await;
+            let contacts = get_contacts(&manager).await;
 
-            _ = contacts_output.send(Ok(vec![]));
+            _ = contacts_output.send(contacts);
           }
 
           Some(groups_output) = group_requests.recv() => {

@@ -171,7 +171,7 @@ pub enum Action {
 // }
 
 pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> Option<Action> {
-  Logger::log(format!("DataMessage: {:#?}", content.clone()));
+  // Logger::log(format!("DataMessage: {:#?}", content.clone()));
 
   let ts = content.timestamp();
   let _timestamp = DateTime::from_timestamp_millis(ts as i64).expect("this happens too often");
@@ -246,7 +246,7 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
           let channel = model.channels.index(config.channel_index);
           return Some(Action::SendToGroup {
             message: format!(
-              "Channel Details:\nname: {},\n psk: {}",
+              "Channel Details:\nname: {},\npsk: {}",
               channel.name,
               BASE64_STANDARD.encode(channel.psk.clone())
             ),
@@ -261,9 +261,20 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
         _ => {}
       }
 
-      let mut message: String = format!("{:?}", content.metadata.sender);
-      message.push_str(":\n");
-      message.push_str(&body);
+      // let name = match model.contacts.(content.metadata.sender) {
+      //   Ok(profile) => profile.profile_name.name,
+      //   Err(_) => {
+      //     Logger::log("couldnt find contact lol");
+      //     format!("{:?}", content.metadata.sender)
+      //   }
+      // }
+      let name = model.contacts[&content.metadata.sender.raw_uuid()]
+        .name
+        .clone()
+        .unwrap()
+        .given_name;
+
+      let message: String = format!("{}:\n{}", name, body);
 
       Logger::log("broadcasting to mesh...");
 
@@ -276,32 +287,32 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       // insert_message(model, data, thread, ts, mine)
     }
 
-    ContentBody::DataMessage(DataMessage {
-      body: None,
-      reaction: Some(reaction),
-      ..
-    }) => {
-      // some flex-tape on the thread derivation
-      if let Thread::Contact(uuid) = thread {
-        if uuid == model.account.uuid {
-          thread = Thread::Contact(content.metadata.destination.raw_uuid());
-        }
-      }
-
-      if let data_message::Reaction {
-        emoji: Some(emoji),
-        target_sent_timestamp: Some(_target_ts),
-        ..
-      } = reaction
-      {
-        let _reaction = Reaction {
-          emoji: emoji.chars().nth(0)?,
-          author: content.metadata.sender.raw_uuid(),
-        };
-      }
-
-      // insert_message(model, data, thread, ts, mine)
-    }
+    // ContentBody::DataMessage(DataMessage {
+    //   body: None,
+    //   reaction: Some(reaction),
+    //   ..
+    // }) => {
+    //   // some flex-tape on the thread derivation
+    //   if let Thread::Contact(uuid) = thread {
+    //     if uuid == model.account.uuid {
+    //       thread = Thread::Contact(content.metadata.destination.raw_uuid());
+    //     }
+    //   }
+    //
+    //   if let data_message::Reaction {
+    //     emoji: Some(emoji),
+    //     target_sent_timestamp: Some(_target_ts),
+    //     ..
+    //   } = reaction
+    //   {
+    //     let _reaction = Reaction {
+    //       emoji: emoji.chars().nth(0)?,
+    //       author: content.metadata.sender.raw_uuid(),
+    //     };
+    //   }
+    //
+    //   // insert_message(model, data, thread, ts, mine)
+    // }
     _ => {}
   }
 
@@ -319,8 +330,8 @@ pub async fn update_contacts(model: &mut Model, spawner: &SignalSpawner) -> anyh
       let profile_key = match contact.profile_key.clone().try_into() {
         Ok(bytes) => Some(ProfileKey::create(bytes)),
         Err(_) => {
-          // Logger::log(format!("died on this dude: {:#?}", contact));
-          None
+          Logger::log(format!("died on this dude: {:#?}", contact));
+          continue;
         }
       };
 

@@ -15,6 +15,7 @@ use futures::StreamExt;
 use futures::{channel::oneshot, future, pin_mut};
 use mime_guess::mime::APPLICATION_OCTET_STREAM;
 use notify_rust::Notification;
+use presage::Error;
 use presage::libsignal_service::configuration::SignalServers;
 use presage::libsignal_service::content::Reaction;
 use presage::libsignal_service::pre_keys::PreKeysStore;
@@ -46,7 +47,7 @@ use presage::{
   store::{Store, Thread},
 };
 use presage_store_sqlite::SqliteStore;
-// use presage_store_sqlite::SqliteStoreError;
+use presage_store_sqlite::SqliteStoreError;
 // use crate::database::SqliteStore;
 // use crate::database::SqliteStoreError;
 use tempfile::Builder;
@@ -706,24 +707,25 @@ pub fn link_device(servers: SignalServers, device_name: String, output: mpsc::Un
 //   Ok(())
 // }
 
-// pub async fn get_contacts(manager: &MyManager) -> Result<Vec<Contact>, Error<SqliteStoreError>> {
-//   // im really counting on some zero cost abstraction as we r just making it into a vec and then
-//   // back in to an iter after we return
-//   // ---
-//   // HAH that did not work at all but thankfully im goated
-//   //
-//   let oldtacts = manager.store().raw_contacts().await?;
-//   let mut contacts = Vec::with_capacity(oldtacts.len());
-//
-//   for contact in oldtacts {
-//     if contact.profile_key.len() == 0 {
-//       continue;
-//     }
-//     contacts.push(contact.try_into().expect("kaboom"));
-//   }
-//
-//   Ok(contacts)
-// }
+pub async fn get_contacts(manager: &MyManager) -> Result<Vec<Contact>, Error<SqliteStoreError>> {
+  // im really counting on some zero cost abstraction as we r just making it into a vec and then
+  // back in to an iter after we return
+  // ---
+  // HAH that did not work at all but thankfully im goated
+  //
+  let oldtacts = manager.store().raw_contacts().await?;
+  let mut contacts = Vec::with_capacity(oldtacts.len());
+
+  for contact in oldtacts {
+    // truly phenomal stuff
+    if contact.profile_key.len() == 0 {
+      continue;
+    }
+    contacts.push(contact.try_into().expect("kaboom"));
+  }
+
+  Ok(contacts)
+}
 
 // this guy might be next on the chopping block...
 pub async fn list_groups(manager: &MyManager) -> Vec<(GroupMasterKeyBytes, Group)> {

@@ -79,9 +79,9 @@ impl Model {
   fn init(manager: &mut MyManager) -> Self {
     Model {
       account: Account {
-        name: "nan".to_string(),
-        username: "nan".to_string(),
-        number: PhoneNumber("idc".to_string()),
+        // name: "nan".to_string(),
+        // username: "nan".to_string(),
+        // number: PhoneNumber("idc".to_string()),
         uuid: manager.registration_data().service_ids.aci,
       },
       groups: Default::default(),
@@ -168,9 +168,6 @@ pub struct Settings {
 
 #[derive(Debug)]
 struct Account {
-  name: String,
-  username: String,
-  number: PhoneNumber,
   uuid: Uuid,
 }
 
@@ -263,15 +260,6 @@ fn draw_linking_screen(url: &Option<Url>) {
       }
       // let raw_url = vec![Line::from("Or visit the raw url:"), Line::from(url.to_string())];
       println!("Or visit the url like a caveman: {}", url.to_string());
-      // Paragraph::new(raw_url).render(
-      //   Rect {
-      //     x: area.x,
-      //     y: area.y + size,
-      //     width: area.width,
-      //     height: area.height - size,
-      //   },
-      //   buffer,
-      // );
     }
 
     None => println!("Generating Linking Url ..."),
@@ -355,6 +343,11 @@ async fn main() -> anyhow::Result<()> {
   let mut model = Model::init(&mut manager);
 
   let spawner = SignalSpawner::new(manager, action_tx.clone());
+  // get our contacts
+  Logger::log("updating contacts...");
+  let result = update_contacts(&mut model, &spawner).await;
+  println!("heres hwo it went -- {:?}", result);
+  Logger::log(format!("here they are: {:#?}", &model.contacts));
 
   let stream_api = StreamApi::new();
 
@@ -466,6 +459,7 @@ async fn main() -> anyhow::Result<()> {
         Action::Receive(received) => match received {
           Received::Content(content) => handle_message(&mut model, &config, *content),
           Received::Contacts => {
+            _ = update_contacts(&mut model, &spawner).await;
             None
             // update our in memory cache of contacts
             // _ = update_contacts(model, spawner).await;
