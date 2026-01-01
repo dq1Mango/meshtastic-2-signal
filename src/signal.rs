@@ -31,6 +31,7 @@ use presage::model::contacts::Contact;
 use presage::model::groups::Group;
 use presage::model::identity::OnNewIdentity;
 use presage::model::messages::Received;
+use presage::proto::BodyRange;
 use presage::proto::EditMessage;
 use presage::proto::NullMessage;
 use presage::proto::ReceiptMessage;
@@ -194,6 +195,7 @@ pub enum Cmd {
     // #[clap(long, short = 'm', help = "Contents of the message to send")]
     message: String,
     // #[clap(long, short = 'k', help = "Master Key of the V2 group (hex string)", value_parser = parse_group_master_key)]
+    ranges: Vec<BodyRange>,
     master_key: GroupMasterKeyBytes,
     timestamp: u64,
     // #[clap(long = "attach", help = "Path to a file to attach, can be repeated")]
@@ -881,6 +883,7 @@ pub async fn run(
     }
     Cmd::SendToGroup {
       message,
+      ranges,
       master_key,
       timestamp,
       attachment_filepath,
@@ -888,6 +891,7 @@ pub async fn run(
       let attachments = upload_attachments(attachment_filepath, &manager).await?;
       let data_message = DataMessage {
         body: Some(message),
+        body_ranges: ranges,
         attachments,
         group_v2: Some(GroupContextV2 {
           master_key: Some(master_key.to_vec()),

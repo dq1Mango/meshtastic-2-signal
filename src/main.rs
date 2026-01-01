@@ -48,7 +48,7 @@ use dumb_packet_router::DumbPacketRouter;
 
 use meshtastic::api::StreamApi;
 use meshtastic::packet::PacketDestination;
-use meshtastic::protobufs::{FromRadio, NodeInfo, User, mesh_packet};
+use meshtastic::protobufs::{Channel, ChannelSettings, FromRadio, NodeInfo, User, mesh_packet};
 use meshtastic::types::MeshChannel;
 use meshtastic::utils;
 
@@ -69,6 +69,7 @@ pub struct Model {
   running_state: RunningState,
   contacts: Contacts,
   groups: Groups,
+  channels: Vec<ChannelSettings>,
   // groups: Vec<Group,
   // chat_index: usize,
   account: Account,
@@ -86,6 +87,8 @@ impl Model {
       groups: Default::default(),
       contacts: Default::default(),
       running_state: Default::default(),
+      // 8 configurable channels
+      channels: Vec::with_capacity(8),
     }
   }
 }
@@ -174,11 +177,13 @@ struct Account {
 #[derive(Deserialize, Serialize)]
 struct RawConfig {
   group_key: String,
+  channel_index: usize,
 }
 
 #[derive(Deserialize, Serialize)]
 struct Config {
   group_key: GroupMasterKeyBytes,
+  channel_index: usize,
 }
 
 impl From<RawConfig> for Config {
@@ -194,7 +199,10 @@ impl From<RawConfig> for Config {
     }
     // let key: GroupMasterKeyBytes = key;
 
-    Config { group_key: key }
+    Config {
+      group_key: key,
+      channel_index: value.channel_index,
+    }
   }
 }
 
@@ -414,7 +422,7 @@ async fn main() -> anyhow::Result<()> {
 
     while let Some(action) = current_action {
       current_action = match action {
-        Action::FromRadio(decoded) => handle_from_radio_packet(decoded, &config, &mut nodes),
+        Action::FromRadio(decoded) => handle_from_radio_packet(&mut model, &config, &mut nodes, decoded),
 
         Action::SendToMesh {
           body,
@@ -441,9 +449,14 @@ async fn main() -> anyhow::Result<()> {
           );
           None
         }
-        Action::SendToGroup { message, master_key } => {
+        Action::SendToGroup {
+          message,
+          ranges,
+          master_key,
+        } => {
           spawner.spawn(Cmd::SendToGroup {
             message,
+            ranges,
             master_key,
             timestamp: Utc::now().timestamp_millis() as u64,
             attachment_filepath: vec![],

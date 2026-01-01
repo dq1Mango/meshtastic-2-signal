@@ -5,9 +5,10 @@ use crate::*;
 /// can then be handled based on their payload variant. Note that the payload
 /// variant can be `None`, in which case the packet should be ignored.
 pub fn handle_from_radio_packet(
-  from_radio_packet: meshtastic::protobufs::FromRadio,
+  model: &mut Model,
   config: &Config,
   nodes: &mut Nodes,
+  from_radio_packet: meshtastic::protobufs::FromRadio,
 ) -> Option<Action> {
   // let cloned_packet = from_radio_packet.clone();
   // Remove `None` variants to get the payload variant
@@ -25,6 +26,12 @@ pub fn handle_from_radio_packet(
   match payload_variant {
     meshtastic::protobufs::from_radio::PayloadVariant::Channel(channel) => {
       println!("Received channel packet: {:?}", channel);
+      // just gyatta be sure
+      assert_eq!(model.channels.len(), channel.index as usize);
+
+      if let Some(settings) = channel.settings {
+        model.channels.push(settings);
+      }
     }
     meshtastic::protobufs::from_radio::PayloadVariant::NodeInfo(node_info) => {
       nodes.insert(node_info.num, node_info);
@@ -122,6 +129,7 @@ pub fn handle_mesh_packet(
         return Some(Action::SendToGroup {
           message,
           master_key: config.group_key,
+          ranges: Vec::new(),
         });
       }
       _ => println!("invalid portnum but also shouldnt see this"),

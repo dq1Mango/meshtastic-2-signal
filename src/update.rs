@@ -1,13 +1,16 @@
+use base64::prelude::*;
+use presage::proto::body_range::{AssociatedValue, Style};
 use presage::proto::data_message::{self, Quote};
 use presage::proto::sync_message::Sent;
 
 // use presage::model::messages::Received;
 use presage::libsignal_service::content::{Content, ContentBody};
 use presage::libsignal_service::prelude::ProfileKey;
-use presage::proto::{DataMessage, SyncMessage};
+use presage::proto::{BodyRange, DataMessage, SyncMessage};
 use presage::store::ContentExt;
 use presage::store::Thread;
 
+use std::ops::Index;
 use std::sync::Arc;
 
 use crate::logger::Logger;
@@ -43,6 +46,7 @@ pub enum Action {
 
   SendToGroup {
     message: String,
+    ranges: Vec<BodyRange>,
     master_key: GroupMasterKeyBytes,
   },
 
@@ -167,7 +171,7 @@ pub enum Action {
 // }
 
 pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> Option<Action> {
-  // Logger::log(format!("DataMessage: {:#?}", content.clone()));
+  Logger::log(format!("DataMessage: {:#?}", content.clone()));
 
   let ts = content.timestamp();
   let _timestamp = DateTime::from_timestamp_millis(ts as i64).expect("this happens too often");
@@ -209,11 +213,11 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
     }) => {
       // Logger::log(format!("DataMessage: {:#?}", body.clone()));
       // some flex-tape on the thread derivation
-      let mut mine = false;
+      // let mut mine = false;
       if let Thread::Contact(uuid) = thread {
         if uuid == model.account.uuid {
-          thread = Thread::Contact(content.metadata.destination.raw_uuid());
-          mine = true;
+          // thread = Thread::Contact(content.metadata.destination.raw_uuid());
+          // mine = true;
         }
       }
 
@@ -236,6 +240,27 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
         vec![]
       };
 
+      match body.as_str() {
+        "/channel" => {
+          Logger::log("semding channel info...");
+          let channel = model.channels.index(config.channel_index);
+          return Some(Action::SendToGroup {
+            message: format!(
+              "Channel Details:\nname: {},\n psk: {}",
+              channel.name,
+              BASE64_STANDARD.encode(channel.psk.clone())
+            ),
+            ranges: vec![BodyRange {
+              start: Some(0),
+              length: Some(16),
+              associated_value: Some(AssociatedValue::Style(Style::Bold.into())),
+            }],
+            master_key: config.group_key,
+          });
+        } // "/qr" => return Some(Action::SendToGroup { message:"qr" , master_key: config.group_key })
+        _ => {}
+      }
+
       let mut message: String = format!("{:?}", content.metadata.sender);
       message.push_str(":\n");
       message.push_str(&body);
@@ -249,41 +274,6 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       });
 
       // insert_message(model, data, thread, ts, mine)
-    }
-
-    ContentBody::SynchronizeMessage(data) => {
-      match data {
-        SyncMessage {
-          sent:
-            Some(Sent {
-              message:
-                Some(DataMessage {
-                  body: Some(_body),
-                  quote: _,
-                  ..
-                }),
-              ..
-            }),
-          // read: read,
-          ..
-        } => {
-          // for receipt in read {
-          //   let Some(aci) = receipt.sender_aci else {
-          //     continue;
-          //   };
-          //   let Some(timestamp) = receipt.timestamp else { continue };
-          //   let Some(aci) = ServiceId::parse_from_service_id_string(&aci) else {
-          //     Logger::log("plz no".to_string());
-          //     return None;
-          //   };
-          //   read_by.push(Receipt {
-          //     sender: aci.raw_uuid(),
-          //     timestamp: DateTime::from_timestamp_millis(timestamp as i64).expect("i think i gotta ditch chrono"),
-          //   });
-          // }
-        }
-        _ => {}
-      }
     }
 
     ContentBody::DataMessage(DataMessage {
