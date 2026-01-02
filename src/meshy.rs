@@ -1,3 +1,8 @@
+use presage::proto::{
+  BodyRange,
+  body_range::{AssociatedValue, Style},
+};
+
 use crate::*;
 
 /// A helper function to handle packets coming directly from the radio connection.
@@ -119,17 +124,21 @@ pub fn handle_mesh_packet(
           });
         }
 
-        let mut message: String = match &nodes[&mesh_packet.from].user {
+        let name = match &nodes[&mesh_packet.from].user {
           Some(usr) => usr.long_name.clone(),
           None => mesh_packet.from.to_string(),
         };
-        message.push_str(":\n");
-        message.push_str(&decoded_text_message);
+
+        let message = format!("{}:\n{}", name, decoded_text_message);
 
         return Some(Action::SendToGroup {
           message,
           master_key: config.group_key,
-          ranges: Vec::new(),
+          ranges: vec![BodyRange {
+            start: Some(0),
+            length: Some(name.len() as u32),
+            associated_value: Some(AssociatedValue::Style(Style::Bold.into())),
+          }],
         });
       }
       _ => println!("invalid portnum but also shouldnt see this"),
