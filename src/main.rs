@@ -269,6 +269,7 @@ fn draw_linking_screen(url: &Option<Url>) {
 #[allow(unexpected_cfgs)]
 #[tokio::main(flavor = "local")]
 async fn main() -> anyhow::Result<()> {
+  println!("at least we ran");
   let (action_tx, mut action_rx) = mpsc::unbounded_channel();
   let db_path = default_db_path();
   let mut config_store =

@@ -268,11 +268,15 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       //     format!("{:?}", content.metadata.sender)
       //   }
       // }
-      let name = model.contacts[&content.metadata.sender.raw_uuid()]
-        .name
-        .clone()
-        .unwrap()
-        .given_name;
+      let uuid = content.metadata.sender.raw_uuid();
+
+      println!("looking for this key: {:?}", content.metadata.sender);
+
+      let name = if model.contacts.contains_key(&uuid) {
+        model.contacts[&uuid].name.clone().unwrap().given_name
+      } else {
+        format!("{:?}", content.metadata.sender)
+      };
 
       let message: String = format!("{}:\n{}", name, body);
 
