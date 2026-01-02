@@ -347,6 +347,7 @@ async fn send(
         .await;
     }
     Recipient::Group(master_key) => {
+      Logger::log("welp i did all i can");
       info!("sending message to group");
       manager
         .send_message_to_group(&master_key, content_body, timestamp)
@@ -890,6 +891,7 @@ pub async fn run(
       timestamp,
       attachment_filepath,
     } => {
+      Logger::log("almost made it there");
       let attachments = upload_attachments(attachment_filepath, &manager).await?;
       let data_message = DataMessage {
         body: Some(message),

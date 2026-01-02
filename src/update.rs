@@ -189,6 +189,8 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
     return None;
   }
 
+  Logger::log(content.body.clone());
+
   match content.body {
     ContentBody::DataMessage(DataMessage {
       body: Some(body),
@@ -211,6 +213,7 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       // read: read,
       ..
     }) => {
+      Logger::log(format!("heres the body: {}", &body));
       // Logger::log(format!("DataMessage: {:#?}", body.clone()));
       // some flex-tape on the thread derivation
       // let mut mine = false;
@@ -258,6 +261,28 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
             master_key: config.group_key,
           });
         } // "/qr" => return Some(Action::SendToGroup { message:"qr" , master_key: config.group_key })
+        "/help" => {
+          Logger::log("being helpful...");
+          let help_text_lines = vec![
+            "Interact with the meshtastci-2-signal gateway bot",
+            "",
+            "Commands:",
+            "\t/channel\t\tDisplay information about the meshtastic channel",
+            "\t/help\t\tDisplay this help message",
+          ];
+
+          let mut help_text: String = Default::default();
+          for line in help_text_lines {
+            help_text.push_str(line);
+            help_text.push_str("\n");
+          }
+
+          return Some(Action::SendToGroup {
+            message: help_text,
+            ranges: vec![],
+            master_key: config.group_key,
+          });
+        }
         _ => {}
       }
 

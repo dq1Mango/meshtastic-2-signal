@@ -140,13 +140,12 @@ impl SignalSpawner {
           }
 
           // profile requestss
-          Some(profile_request) = profile_requests.recv() =>
-          {
+          Some(profile_request) = profile_requests.recv() => {
             let ProfileRequest {
-            output,
-            uuid,
-            profile_key,
-          } = profile_request;
+              output,
+              uuid,
+              profile_key,
+            } = profile_request;
             _ = output.send(retrieve_profile(&mut manager, uuid, profile_key).await);
           }
 

@@ -344,10 +344,7 @@ async fn main() -> anyhow::Result<()> {
 
   let spawner = SignalSpawner::new(manager, action_tx.clone());
   // get our contacts
-  Logger::log("updating contacts...");
   let result = update_contacts(&mut model, &spawner).await;
-  println!("heres hwo it went -- {:?}", result);
-  Logger::log(format!("here they are: {:#?}", &model.contacts));
 
   let stream_api = StreamApi::new();
 
@@ -447,6 +444,7 @@ async fn main() -> anyhow::Result<()> {
           ranges,
           master_key,
         } => {
+          println!("\tsending to signal...");
           spawner.spawn(Cmd::SendToGroup {
             message,
             ranges,
