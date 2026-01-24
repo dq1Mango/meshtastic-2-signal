@@ -150,16 +150,17 @@ impl SignalSpawner {
           }
 
           Some(content) = messages.next() => {
-            Logger::log("mhhhh some juicy content for you");
             match &content {
               Received::QueueEmpty => {
+                println!("nothing left");
                 _ = output.send(Action::Receive(Received::QueueEmpty));
                 // break;
               }
               Received::Contacts => {
-                //println!("got contacts synchronization"),
+                println!("got contacts synchronization");
               }
               Received::Content(content) => {
+                Logger::log("mhhhh some juicy content for you");
                 // this better be fast lmao
                 process_incoming_message(&mut manager, attachments_tmp_dir.path(), false, &content).await
               }
@@ -224,7 +225,10 @@ impl SignalSpawner {
   // }
 
   pub fn spawn(&self, task: Cmd) {
-    self.send.send(task).expect("Thread with LocalSet has shut down.");
+    self
+      .send
+      .send(task)
+      .expect("Thread with LocalSet has shut down.");
   }
 
   pub async fn list_contacts(&self) -> Result<Vec<Contact>, Error<SqliteStoreError>> {

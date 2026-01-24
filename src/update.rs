@@ -171,7 +171,8 @@ pub enum Action {
 // }
 
 pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> Option<Action> {
-  // Logger::log(format!("DataMessage: {:#?}", content.clone()));
+  Logger::log("handling message");
+  // Logger::log(format!("Fun Message: {:#?}", content.clone()));
 
   let ts = content.timestamp();
   let _timestamp = DateTime::from_timestamp_millis(ts as i64).expect("this happens too often");
@@ -213,7 +214,8 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       // read: read,
       ..
     }) => {
-      Logger::log(format!("heres the body: {}", &body));
+      // Logger::log(format!("heres the body: {}", &body));
+      println!("\tmatched!");
       // Logger::log(format!("DataMessage: {:#?}", body.clone()));
       // some flex-tape on the thread derivation
       // let mut mine = false;

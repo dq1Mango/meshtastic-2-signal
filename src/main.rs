@@ -344,7 +344,7 @@ async fn main() -> anyhow::Result<()> {
 
   let spawner = SignalSpawner::new(manager, action_tx.clone());
   // get our contacts
-  let result = update_contacts(&mut model, &spawner).await;
+  let _result = update_contacts(&mut model, &spawner).await;
 
   let stream_api = StreamApi::new();
 
@@ -412,7 +412,9 @@ async fn main() -> anyhow::Result<()> {
 
     while let Some(action) = current_action {
       current_action = match action {
-        Action::FromRadio(decoded) => handle_from_radio_packet(&mut model, &config, &mut nodes, decoded),
+        Action::FromRadio(decoded) => {
+          handle_from_radio_packet(&mut model, &config, &mut nodes, decoded)
+        }
 
         Action::SendToMesh {
           body,
