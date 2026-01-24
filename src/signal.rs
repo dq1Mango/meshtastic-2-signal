@@ -262,6 +262,10 @@ pub fn attachments_tmp_dir() -> anyhow::Result<TempDir> {
 //     .init();
 //   Args::parse()
 // }
+//
+pub fn config_dir_path() -> String {
+  "/home/dq1mango/.config/mesh-2-signal/".to_string()
+}
 
 pub fn default_db_path() -> String {
   // ProjectDirs::from("org", "whisperfish", "presage")
@@ -270,7 +274,9 @@ pub fn default_db_path() -> String {
   //   .join("cli.db3")
   //   .display()
   //   .to_string()
-  "./signal.db3".to_string()
+  let mut dir = config_dir_path();
+  dir.push_str("signal.db3");
+  dir
 }
 
 // #[tokio::main(flavor = "multi_thread")]
@@ -459,19 +465,14 @@ async fn print_message<S: Store>(manager: &MyManager, notifications: bool, conte
           return None;
         };
 
-        let ContentBody::DataMessage(DataMessage {
-          body: Some(body), ..
-        }) = message.body
-        else {
+        let ContentBody::DataMessage(DataMessage { body: Some(body), .. }) = message.body else {
           warn!("message reacted to has no body");
           return None;
         };
 
         Some(format!("Reacted with {emoji} to message: \"{body}\""))
       }
-      DataMessage {
-        body: Some(body), ..
-      } => Some(body.to_string()),
+      DataMessage { body: Some(body), .. } => Some(body.to_string()),
       _ => Some("Empty data message".to_string()),
     }
   }
@@ -555,12 +556,8 @@ async fn print_message<S: Store>(manager: &MyManager, notifications: bool, conte
         receipt_message::Type::try_from(receipt_type.unwrap_or_default()).unwrap()
       ),
     )),
-    ContentBody::StoryMessage(story) => {
-      Some(Msg::Received(&thread, format!("new story: {story:?}")))
-    }
-    ContentBody::PniSignatureMessage(_) => {
-      Some(Msg::Received(&thread, "got PNI signature message".into()))
-    }
+    ContentBody::StoryMessage(story) => Some(Msg::Received(&thread, format!("new story: {story:?}"))),
+    ContentBody::PniSignatureMessage(_) => Some(Msg::Received(&thread, "got PNI signature message".into())),
   } {
     let ts = content.timestamp();
     let (prefix, body) = match msg {
@@ -617,8 +614,7 @@ async fn receive(
         //println!("got contacts synchronization"),
       }
       Received::Content(content) => {
-        process_incoming_message(manager, attachments_tmp_dir.path(), notifications, &content)
-          .await
+        process_incoming_message(manager, attachments_tmp_dir.path(), notifications, &content).await
       }
     }
 
@@ -630,32 +626,24 @@ async fn receive(
   Ok(())
 }
 
-pub fn link_device(
-  servers: SignalServers,
-  device_name: String,
-  output: mpsc::UnboundedSender<Action>,
-) {
+pub fn link_device(servers: SignalServers, device_name: String, output: mpsc::UnboundedSender<Action>) {
   spawn_local(async move {
     let db_path = default_db_path();
 
-    let config_store =
-      SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust)
-        .await
-        .unwrap();
+    let config_store = SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust)
+      .await
+      .unwrap();
 
     let (provisioning_link_tx, provisioning_link_rx) = oneshot::channel();
     let output1 = output.clone();
-    Logger::log(format!(
-      "about to send something, but gonna sleep a little first"
-    ));
+    Logger::log(format!("about to send something, but gonna sleep a little first"));
     sleep(Duration::from_secs(2)).await;
 
     let manager = future::join(
       async move {
         // sleep(Duration::from_secs(2)).await;
         // Logger::log(format!("this isnt even my fault ..."));
-        Manager::link_secondary_device(config_store, servers, device_name, provisioning_link_tx)
-          .await
+        Manager::link_secondary_device(config_store, servers, device_name, provisioning_link_tx).await
       },
       async move {
         Logger::log(format!("about to send something, feeling nervous"));
@@ -867,9 +855,7 @@ pub async fn run(
       let current_device_id: u8 = manager.device_id().into();
 
       for device in devices {
-        let device_name = device
-          .name
-          .unwrap_or_else(|| "(no device name)".to_string());
+        let device_name = device.name.unwrap_or_else(|| "(no device name)".to_string());
         let current_marker = if device.id == current_device_id {
           "(this device)"
         } else {
@@ -898,14 +884,7 @@ pub async fn run(
         ..Default::default()
       };
 
-      send(
-        manager,
-        Recipient::Contact(uuid),
-        timestamp,
-        data_message,
-        None,
-      )
-      .await?;
+      send(manager, Recipient::Contact(uuid), timestamp, data_message, None).await?;
     }
     Cmd::SendToGroup {
       message,
@@ -998,14 +977,7 @@ pub async fn run(
           data_message: Some(targeted_message),
           target_sent_timestamp: Some(target_timestamp),
         };
-        send(
-          manager,
-          recipient_from_thread(thread),
-          timestamp,
-          content,
-          None,
-        )
-        .await?;
+        send(manager, recipient_from_thread(thread), timestamp, content, None).await?;
         Logger::log("successfully sent the edit message");
       }
     }

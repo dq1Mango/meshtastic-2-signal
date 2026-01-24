@@ -34,7 +34,7 @@ use qrcodegen::QrCode;
 use qrcodegen::QrCodeEcc;
 // use crate::signal::*;
 use crate::meshy::*;
-use crate::signal::{Cmd, link_device};
+use crate::signal::{Cmd, config_dir_path, link_device};
 use crate::signal::{default_db_path, list_groups};
 use crate::update::*;
 use crate::{logger::Logger, mysignal::SignalSpawner, update::LinkingAction};
@@ -203,8 +203,14 @@ impl From<RawConfig> for Config {
   }
 }
 
+fn config_path() -> String {
+  let mut dir = config_dir_path();
+  dir.push_str("config.toml");
+  dir
+}
+
 fn parse_config() -> Config {
-  let mut file = match File::open("config.toml") {
+  let mut file = match File::open(config_path()) {
     Ok(f) => f,
     Err(err) => {
       eprintln!("unable to open file 'config.toml'");
@@ -412,9 +418,7 @@ async fn main() -> anyhow::Result<()> {
 
     while let Some(action) = current_action {
       current_action = match action {
-        Action::FromRadio(decoded) => {
-          handle_from_radio_packet(&mut model, &config, &mut nodes, decoded)
-        }
+        Action::FromRadio(decoded) => handle_from_radio_packet(&mut model, &config, &mut nodes, decoded),
 
         Action::SendToMesh {
           body,

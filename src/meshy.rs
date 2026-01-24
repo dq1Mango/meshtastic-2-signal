@@ -126,7 +126,7 @@ pub fn handle_mesh_packet(
 
         let name = match &nodes[&mesh_packet.from].user {
           Some(usr) => usr.long_name.clone(),
-          None => mesh_packet.from.to_string(),
+          None => format!("{:x}", mesh_packet.from),
         };
 
         let message = format!("{}:\n{}", name, decoded_text_message);
