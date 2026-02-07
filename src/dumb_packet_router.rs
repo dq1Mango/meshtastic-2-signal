@@ -1,4 +1,4 @@
-use meshtastic::packet::PacketRouter;
+use meshtastic::{packet::PacketRouter, types::NodeId};
 
 pub struct DumbPacketRouter;
 
@@ -31,6 +31,6 @@ impl PacketRouter<String, MyError> for DumbPacketRouter {
   }
 
   fn source_node_id(&self) -> meshtastic::types::NodeId {
-    meshtastic::types::NodeId::default()
+    NodeId::new(2454871382)
   }
 }

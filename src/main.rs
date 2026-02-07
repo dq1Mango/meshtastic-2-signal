@@ -185,8 +185,7 @@ struct Config {
 
 impl From<RawConfig> for Config {
   fn from(value: RawConfig) -> Self {
-    let almost_key =
-      hex::decode(value.group_key).expect("failed to parse key\nshould parese to a [u8; 32]");
+    let almost_key = hex::decode(value.group_key).expect("failed to parse key\nshould parese to a [u8; 32]");
     if almost_key.len() != 32 {
       panic!("incorrect key length: {}", almost_key.len());
     }
@@ -219,9 +218,7 @@ fn parse_config() -> Config {
     }
   };
   let mut contents = String::new();
-  file
-    .read_to_string(&mut contents)
-    .expect("cmon no way this fails");
+  file.read_to_string(&mut contents).expect("cmon no way this fails");
 
   let raw: RawConfig = toml::from_str(&contents).expect("failed to parse config file");
   raw.into()
@@ -277,8 +274,7 @@ fn draw_linking_screen(url: &Option<Url>) {
 async fn main() -> anyhow::Result<()> {
   let (action_tx, mut action_rx) = mpsc::unbounded_channel();
   let db_path = default_db_path();
-  let mut config_store =
-    SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
+  let mut config_store = SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
 
   if !config_store.is_registered().await {
     link_device(
@@ -328,8 +324,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // there probably a better way to make the store linked but this only happens once so idc
-    config_store =
-      SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
+    config_store = SqliteStore::open_with_passphrase(&db_path, "secret".into(), OnNewIdentity::Trust).await?;
   }
 
   Logger::log("Linked!!!");

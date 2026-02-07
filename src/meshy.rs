@@ -9,13 +9,9 @@ use crate::*;
 /// The Meshtastic `PhoneAPI` will return decoded `FromRadio` packets, which
 /// can then be handled based on their payload variant. Note that the payload
 /// variant can be `None`, in which case the packet should be ignored.
-pub fn handle_from_radio_packet(
-  model: &mut Model,
-  config: &Config,
-  nodes: &mut Nodes,
-  from_radio_packet: meshtastic::protobufs::FromRadio,
-) -> Option<Action> {
+pub fn handle_from_radio_packet(model: &mut Model, config: &Config, nodes: &mut Nodes, from_radio_packet: meshtastic::protobufs::FromRadio) -> Option<Action> {
   // let cloned_packet = from_radio_packet.clone();
+  // println!("heres all the packets: {:?}", cloned_packet);
   // Remove `None` variants to get the payload variant
   let payload_variant = match from_radio_packet.payload_variant {
     Some(payload_variant) => payload_variant,
@@ -59,13 +55,10 @@ pub fn handle_from_radio_packet(
 ///
 /// Mesh packets are the most commonly used type of packet, and are usually
 /// what people are referring to when they talk about "packets."
-pub fn handle_mesh_packet(
-  mesh_packet: protobufs::MeshPacket,
-  nodes: &Nodes,
-  config: &Config,
-) -> Option<Action> {
-  // let cloned_packet = mesh_packet.clone();
-  // println!("look at this fun packet: {:?}", cloned_packet);
+pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, config: &Config) -> Option<Action> {
+  let cloned_packet = mesh_packet.clone();
+  println!("mesh packet for ya: {:?}", cloned_packet);
+  println!();
   // Remove `None` variants to get the payload variant
 
   // Only handle decoded (unencrypted) mesh packets
@@ -90,8 +83,7 @@ pub fn handle_mesh_packet(
       // This data needs to be decoded into a protobuf struct, which is shown below.
       // The `decode` function is provided by the `prost` crate, which is re-exported
       // by the `meshtastic` crate.
-      let decoded_position =
-        meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
+      let decoded_position = meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
 
       println!("Received position packet: {:?}", decoded_position);
     }
@@ -146,16 +138,12 @@ pub fn handle_mesh_packet(
     },
 
     meshtastic::protobufs::PortNum::WaypointApp => {
-      let decoded_waypoint =
-        meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();
+      let decoded_waypoint = meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();
 
       println!("Received waypoint packet: {:?}", decoded_waypoint);
     }
     _ => {
-      println!(
-        "Received mesh packet on port {:?}, not handling...",
-        packet_data.portnum
-      );
+      println!("Received mesh packet on port {:?}, not handling...", packet_data.portnum);
     }
   }
 
