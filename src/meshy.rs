@@ -32,7 +32,7 @@ pub fn handle_from_radio_packet(
     meshtastic::protobufs::from_radio::PayloadVariant::Channel(channel) => {
       println!("Received channel packet: {:?}", channel);
       // just gyatta be sure
-      assert_eq!(model.channels.len(), channel.index as usize);
+      // assert_eq!(model.channels.len(), channel.index as usize);
 
       if let Some(settings) = channel.settings {
         model.channels.push(settings);
@@ -64,7 +64,8 @@ pub fn handle_mesh_packet(
   nodes: &Nodes,
   config: &Config,
 ) -> Option<Action> {
-  let cloned_packet = mesh_packet.clone();
+  // let cloned_packet = mesh_packet.clone();
+  // println!("look at this fun packet: {:?}", cloned_packet);
   // Remove `None` variants to get the payload variant
 
   // Only handle decoded (unencrypted) mesh packets

@@ -16,13 +16,17 @@ impl std::fmt::Display for MyError {
 impl std::error::Error for MyError {}
 
 impl PacketRouter<String, MyError> for DumbPacketRouter {
-  fn handle_packet_from_radio(&mut self, _packet: meshtastic::protobufs::FromRadio) -> Result<String, MyError> {
+  fn handle_packet_from_radio(
+    &mut self,
+    _packet: meshtastic::protobufs::FromRadio,
+  ) -> Result<String, MyError> {
     println!("not rly handling packet from radio ngl");
     Ok("hi".to_string())
   }
 
-  fn handle_mesh_packet(&mut self, _packet: meshtastic::protobufs::MeshPacket) -> Result<String, MyError> {
+  fn handle_mesh_packet(&mut self, packet: meshtastic::protobufs::MeshPacket) -> Result<String, MyError> {
     println!("not rly handling packet ngl");
+    println!("here it is anyway: {:?}", packet);
     Ok("bruh".to_string())
   }
 

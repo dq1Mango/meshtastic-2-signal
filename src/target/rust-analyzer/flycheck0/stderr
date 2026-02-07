@@ -1,12 +1,1 @@
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on shared package cache
-    Blocking waiting for file lock on build directory
-   1.062430947s  INFO prepare_target{force=false package_id=meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal) target="meshtastic-2-signal"}: cargo::core::compiler::fingerprint: stale: changed "/home/mqngo/Coding/meshtastic-2-signal/src/main.rs"
-   1.062454517s  INFO prepare_target{force=false package_id=meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal) target="meshtastic-2-signal"}: cargo::core::compiler::fingerprint:           (vs) "/home/mqngo/Coding/meshtastic-2-signal/target/debug/.fingerprint/meshtastic-2-signal-472be873e73c417b/dep-test-bin-meshtastic-2-signal"
-   1.062460568s  INFO prepare_target{force=false package_id=meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal) target="meshtastic-2-signal"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1769296310, nanos: 161033368 } < FileTime { seconds: 1769296315, nanos: 588688863 }
-   1.062544518s  INFO prepare_target{force=false package_id=meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal) target="meshtastic-2-signal"}: cargo::core::compiler::fingerprint: fingerprint dirty for meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal)/Check { test: true }/TargetInner { name: "meshtastic-2-signal", doc: true, ..: with_path("/home/mqngo/Coding/meshtastic-2-signal/src/main.rs", Edition2024) }
-   1.062558484s  INFO prepare_target{force=false package_id=meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal) target="meshtastic-2-signal"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/mqngo/Coding/meshtastic-2-signal/target/debug/.fingerprint/meshtastic-2-signal-472be873e73c417b/dep-test-bin-meshtastic-2-signal", reference_mtime: FileTime { seconds: 1769296310, nanos: 161033368 }, stale: "/home/mqngo/Coding/meshtastic-2-signal/src/main.rs", stale_mtime: FileTime { seconds: 1769296315, nanos: 588688863 } }))
-    Checking meshtastic-2-signal v0.1.0 (/home/mqngo/Coding/meshtastic-2-signal)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.41s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.39s
