@@ -89,9 +89,9 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
       // This data needs to be decoded into a protobuf struct, which is shown below.
       // The `decode` function is provided by the `prost` crate, which is re-exported
       // by the `meshtastic` crate.
-      let decoded_position = meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
+      // let decoded_position = meshtastic::protobufs::Position::decode(packet_data.payload.as_slice()).unwrap();
 
-      println!("Received position packet: {:?}", decoded_position);
+      // println!("Received position packet: {:?}", decoded_position);
     }
 
     meshtastic::protobufs::PortNum::TextMessageApp => match mesh_packet.channel {
@@ -106,6 +106,7 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
             body: "pong!".to_string(),
             channel: 0.into(),
             destination: PacketDestination::Node(mesh_packet.from.into()),
+            signal_message: None,
           });
         }
       }
@@ -120,6 +121,7 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
             body: "pong!".to_string(),
             channel: 1.into(),
             destination: PacketDestination::Broadcast,
+            signal_message: None,
           });
         }
 
@@ -144,7 +146,7 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
     },
 
     PortNum::RoutingApp => {
-      // println!("routing this routing that: {:?}", packet_data)
+      println!("routing this routing that: {:?}", packet_data)
     }
 
     meshtastic::protobufs::PortNum::WaypointApp => {

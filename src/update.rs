@@ -40,6 +40,7 @@ pub enum Action {
     body: String,
     channel: MeshChannel,
     destination: PacketDestination,
+    signal_message: Option<SignalMessage>,
   },
 
   FromRadio(FromRadio),
@@ -48,6 +49,11 @@ pub enum Action {
     message: String,
     ranges: Vec<BodyRange>,
     master_key: GroupMasterKeyBytes,
+  },
+
+  MeshAck {
+    packet: MeshPacket,
+    deliverd: bool,
   },
 
   PickOption,
@@ -197,6 +203,7 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
       body: Some(body),
       quote,
       reaction,
+      timestamp,
       ..
     })
     | ContentBody::SynchronizeMessage(SyncMessage {
@@ -207,6 +214,7 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
               body: Some(body),
               quote,
               reaction,
+              timestamp,
               ..
             }),
           ..
@@ -226,16 +234,9 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
         }
       }
 
-      let _quote = if let Some(Quote { id, .. }) = quote {
-        id
-      } else {
-        None
-      };
+      let _quote = if let Some(Quote { id, .. }) = quote { id } else { None };
 
-      let _reactions = if let Some(data_message::Reaction {
-        emoji: Some(emoji), ..
-      }) = reaction
-      {
+      let _reactions = if let Some(data_message::Reaction { emoji: Some(emoji), .. }) = reaction {
         Logger::log("it works like this");
         vec![Reaction {
           emoji: emoji.chars().nth(0)?,
@@ -313,6 +314,12 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
         body: message,
         channel: 1.into(),
         destination: PacketDestination::Broadcast,
+        signal_message: Some(SignalMessage {
+          body: body,
+          sender: uuid,
+          // kaboom?
+          timestamp: timestamp?,
+        }),
       });
 
       // insert_message(model, data, thread, ts, mine)

@@ -7,6 +7,7 @@ mod update;
 use std::io::prelude::*;
 use std::{collections::HashMap, fmt::Debug, fs::File, hash::Hash, sync::Arc, vec};
 
+use presage::proto::DataMessage;
 use presage::{
   libsignal_service::{
     Profile,
@@ -47,7 +48,7 @@ mod dumb_packet_router;
 use dumb_packet_router::DumbPacketRouter;
 
 use meshtastic::api::StreamApi;
-use meshtastic::packet::PacketDestination;
+use meshtastic::packet::{PacketDestination, PacketRouter};
 use meshtastic::protobufs::{Channel, ChannelSettings, FromRadio, MeshPacket, NodeInfo, User, mesh_packet};
 use meshtastic::types::{MeshChannel, NodeId};
 use meshtastic::utils;
@@ -70,6 +71,7 @@ pub struct Model {
   contacts: Contacts,
   groups: Groups,
   channels: Vec<ChannelSettings>,
+  mesh_to_signal: HashMap<u32, SignalMessage>,
   // groups: Vec<Group,
   // chat_index: usize,
   account: Account,
@@ -87,6 +89,7 @@ impl Model {
       groups: Default::default(),
       contacts: Default::default(),
       running_state: Default::default(),
+      mesh_to_signal: HashMap::new(),
       // 8 configurable channels
       channels: Vec::with_capacity(8),
     }
@@ -117,6 +120,13 @@ pub enum ReceiptType {
 pub struct Reaction {
   emoji: char,
   author: Uuid,
+}
+
+#[derive(Debug, Clone)]
+pub struct SignalMessage {
+  body: String,
+  sender: Uuid,
+  timestamp: u64,
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -340,6 +350,7 @@ async fn main() -> anyhow::Result<()> {
   }
 
   let config = parse_config();
+  let thread = Thread::Group(config.group_key);
 
   let mut model = Model::init(&mut manager);
 
@@ -378,8 +389,8 @@ async fn main() -> anyhow::Result<()> {
   //   role: 2,
   // };
 
-  let (ack_notif_tx, ack_notif_rx) = mpsc::unbounded_channel::<MeshPacket>();
-  let mut packet_router = DumbPacketRouter::new(NodeId::new(2454871382), ack_notif_tx);
+  let (packet_id_tx, mut packet_id_rx) = mpsc::unbounded_channel::<u32>();
+  let mut packet_router = DumbPacketRouter::new(NodeId::new(2454871382), action_tx.clone(), packet_id_tx);
 
   // println!(
   //   "{:?}",
@@ -415,12 +426,17 @@ async fn main() -> anyhow::Result<()> {
 
     while let Some(action) = current_action {
       current_action = match action {
-        Action::FromRadio(decoded) => handle_from_radio_packet(&mut model, &config, &mut nodes, decoded),
+        Action::FromRadio(decoded) => {
+          // i love this packet router thing oh so much
+          packet_router.handle_packet_from_radio(decoded.clone());
+          handle_from_radio_packet(&mut model, &config, &mut nodes, decoded)
+        }
 
         Action::SendToMesh {
           body,
           channel,
           destination,
+          signal_message,
         } => {
           println!("\tsending to mesh...");
           println!(
@@ -440,6 +456,13 @@ async fn main() -> anyhow::Result<()> {
               )
               .await
           );
+
+          if let Some(message) = signal_message {
+            if let Some(id) = packet_id_rx.recv().await {
+              println!("\tthis is our id: {}", id);
+              model.mesh_to_signal.insert(id, message);
+            }
+          }
           None
         }
         Action::SendToGroup {
@@ -467,6 +490,23 @@ async fn main() -> anyhow::Result<()> {
           }
           Received::QueueEmpty => None,
         },
+
+        Action::MeshAck { packet, deliverd } => {
+          println!("got ack!!!");
+          if deliverd {
+            if let Some(message) = model.mesh_to_signal.remove(&packet.id) {
+              spawner.spawn(Cmd::ReactToThread {
+                thread: thread.clone(),
+                reaction: "✔️".to_string(),
+                timestamp: Utc::now().timestamp_millis() as u64,
+                target_timestamp: message.timestamp,
+                author_uuid: Some(message.sender),
+              });
+            }
+          }
+
+          None
+        }
         _ => None,
       }
     }
