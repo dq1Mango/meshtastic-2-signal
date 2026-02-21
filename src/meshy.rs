@@ -1,3 +1,4 @@
+use meshtastic::protobufs::PortNum;
 use presage::proto::{
   BodyRange,
   body_range::{AssociatedValue, Style},
@@ -9,7 +10,12 @@ use crate::*;
 /// The Meshtastic `PhoneAPI` will return decoded `FromRadio` packets, which
 /// can then be handled based on their payload variant. Note that the payload
 /// variant can be `None`, in which case the packet should be ignored.
-pub fn handle_from_radio_packet(model: &mut Model, config: &Config, nodes: &mut Nodes, from_radio_packet: meshtastic::protobufs::FromRadio) -> Option<Action> {
+pub fn handle_from_radio_packet(
+  model: &mut Model,
+  config: &Config,
+  nodes: &mut Nodes,
+  from_radio_packet: meshtastic::protobufs::FromRadio,
+) -> Option<Action> {
   // let cloned_packet = from_radio_packet.clone();
   // println!("heres all the packets: {:?}", cloned_packet);
   // Remove `None` variants to get the payload variant
@@ -57,7 +63,7 @@ pub fn handle_from_radio_packet(model: &mut Model, config: &Config, nodes: &mut 
 /// what people are referring to when they talk about "packets."
 pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, config: &Config) -> Option<Action> {
   let cloned_packet = mesh_packet.clone();
-  println!("mesh packet for ya: {:?}", cloned_packet);
+  // println!("mesh packet for ya: {:?}", cloned_packet);
   println!();
   // Remove `None` variants to get the payload variant
 
@@ -136,6 +142,10 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
       }
       _ => println!("invalid portnum but also shouldnt see this"),
     },
+
+    PortNum::RoutingApp => {
+      // println!("routing this routing that: {:?}", packet_data)
+    }
 
     meshtastic::protobufs::PortNum::WaypointApp => {
       let decoded_waypoint = meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();

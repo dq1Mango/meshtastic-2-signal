@@ -48,8 +48,8 @@ use dumb_packet_router::DumbPacketRouter;
 
 use meshtastic::api::StreamApi;
 use meshtastic::packet::PacketDestination;
-use meshtastic::protobufs::{Channel, ChannelSettings, FromRadio, NodeInfo, User, mesh_packet};
-use meshtastic::types::MeshChannel;
+use meshtastic::protobufs::{Channel, ChannelSettings, FromRadio, MeshPacket, NodeInfo, User, mesh_packet};
+use meshtastic::types::{MeshChannel, NodeId};
 use meshtastic::utils;
 
 // This import allows for decoding of mesh packets
@@ -378,7 +378,9 @@ async fn main() -> anyhow::Result<()> {
   //   role: 2,
   // };
 
-  let mut packet_router = DumbPacketRouter;
+  let (ack_notif_tx, ack_notif_rx) = mpsc::unbounded_channel::<MeshPacket>();
+  let mut packet_router = DumbPacketRouter::new(NodeId::new(2454871382), ack_notif_tx);
+
   // println!(
   //   "{:?}",
   //   stream_api
