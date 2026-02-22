@@ -5,13 +5,11 @@ use presage::proto::sync_message::Sent;
 
 // use presage::model::messages::Received;
 use presage::libsignal_service::content::{Content, ContentBody};
-use presage::libsignal_service::prelude::ProfileKey;
 use presage::proto::{BodyRange, DataMessage, SyncMessage};
 use presage::store::ContentExt;
 use presage::store::Thread;
 
 use std::ops::Index;
-use std::sync::Arc;
 
 use crate::logger::Logger;
 use crate::*;
@@ -357,50 +355,3 @@ pub fn handle_message(model: &mut Model, config: &Config, content: Content) -> O
   None
 }
 
-pub async fn update_contacts(model: &mut Model, spawner: &SignalSpawner) -> anyhow::Result<()> {
-  Logger::log("updating contacts".to_string());
-  for contact in spawner.list_contacts().await? {
-    // Logger::log(format!("{}", contact.inbox_position));
-    if model.contacts.contains_key(&contact.uuid) {
-      Logger::log("already_gyatt key".to_string());
-      continue;
-    } else {
-      let profile_key = match contact.profile_key.clone().try_into() {
-        Ok(bytes) => Some(ProfileKey::create(bytes)),
-        Err(_) => {
-          Logger::log(format!("died on this dude: {:#?}", contact));
-          continue;
-        }
-      };
-
-      let profile = match spawner.retrieve_profile(contact.uuid, profile_key).await {
-        Ok(x) => x,
-        Err(_) => continue,
-      };
-
-      let Some(contacts) = Arc::get_mut(&mut model.contacts) else {
-        Logger::log("didnt get off so easy".to_string());
-        return Ok(());
-      };
-
-      contacts.insert(contact.uuid, profile.clone());
-    }
-  }
-  Ok(())
-}
-
-impl Model {
-  pub async fn update_groups(self: &mut Self, spawner: &SignalSpawner) -> anyhow::Result<()> {
-    Logger::log("updating groups".to_string());
-    for (key, group) in spawner.list_groups().await {
-      if !self.groups.contains_key(&key) {}
-      let Some(groups) = Arc::get_mut(&mut self.groups) else {
-        Logger::log("didnt get off so easy".to_string());
-        continue;
-      };
-
-      groups.insert(key, group);
-    }
-    Ok(())
-  }
-}
