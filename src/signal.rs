@@ -64,8 +64,8 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::MyManager;
-use crate::Profile;
-use crate::logger::Logger;
+use meshtastic_2_signal::Profile;
+use meshtastic_2_signal::logger::Logger;
 // #[derive(Parser)]
 // #[clap(about = "a basic signal CLI to try things out")]
 // struct Args {
@@ -403,10 +403,17 @@ pub async fn process_incoming_message(
             .unwrap_or("application/octet-stream"),
         );
         let extension = extensions.and_then(|e| e.first()).unwrap_or(&"bin");
-        let filename = attachment_pointer
+        let raw_name = attachment_pointer
           .file_name
           .clone()
           .unwrap_or_else(|| Local::now().format("%Y-%m-%d-%H-%M-%s").to_string());
+        // The filename comes from the message sender, so it could contain path
+        // traversal sequences like "../../etc/cron.d/backdoor". Strip it down to
+        // just the final component to keep writes inside the temp directory.
+        let filename = Path::new(&raw_name)
+          .file_name()
+          .and_then(|n| n.to_str())
+          .unwrap_or(&raw_name);
         let file_path = attachments_tmp_dir.join(format!("presage-{filename}.{extension}",));
         match fs::write(&file_path, &attachment_data).await {
           Ok(_) => info!(%sender, file_path =% file_path.display(), "saved attachment"),
@@ -801,8 +808,8 @@ pub async fn retrieve_profile(
 //   }
 // }
 
-use crate::update::Action;
-use crate::update::LinkingAction;
+use meshtastic_2_signal::update::Action;
+use meshtastic_2_signal::update::LinkingAction;
 
 pub async fn run(
   manager: &mut MyManager,
