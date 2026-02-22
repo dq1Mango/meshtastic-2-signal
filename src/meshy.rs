@@ -131,7 +131,7 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
           });
         }
 
-        let name = match &nodes[&mesh_packet.from].user {
+        let name = match nodes.get(&mesh_packet.from).and_then(|n| n.user.as_ref()) {
           Some(usr) => usr.long_name.clone(),
           None => format!("{:x}", mesh_packet.from),
         };

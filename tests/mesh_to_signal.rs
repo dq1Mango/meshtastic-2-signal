@@ -198,12 +198,19 @@ fn unknown_channel_number_returns_none() {
 }
 
 #[test]
-#[should_panic]
-fn unknown_node_on_channel_1_panics() {
-    // This documents the existing bug: nodes[&from] panics for unknown nodes
+fn unknown_node_on_channel_1_uses_hex_fallback() {
+    // Previously this panicked via nodes[&from]. Now uses .get() with hex fallback.
     let mut h = setup();
     let unknown_node: u32 = 0xDEAD0000;
-    // Don't add to nodes map, so lookup will panic
     let packet = h.mesh.text_message(unknown_node, 1, "hello");
-    let _ = handle_from_radio_packet(&mut h.model, &h.config, &mut h.nodes, packet);
+    let action = handle_from_radio_packet(&mut h.model, &h.config, &mut h.nodes, packet);
+
+    let action = action.expect("should produce an action even for unknown nodes");
+    match action {
+        Action::SendToGroup { message, .. } => {
+            assert!(message.contains("dead0000"), "should use hex node ID as name");
+            assert!(message.contains("hello"));
+        }
+        other => panic!("expected SendToGroup, got {:?}", other),
+    }
 }
