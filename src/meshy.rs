@@ -97,7 +97,10 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
     meshtastic::protobufs::PortNum::TextMessageApp => match mesh_packet.channel {
       0 => {
         // println!("heres the whole packet: {:#?}", &cloned_packet);
-        let decoded_text_message = String::from_utf8(packet_data.payload).unwrap();
+        let Ok(decoded_text_message) = String::from_utf8(packet_data.payload) else {
+          println!("Received DM with invalid UTF-8, not handling...");
+          return None;
+        };
 
         println!("Received DM message: {:?}", &decoded_text_message);
 
@@ -112,7 +115,10 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
       }
       1 => {
         // println!("heres the whole packet: {:#?}", &cloned_packet);
-        let decoded_text_message = String::from_utf8(packet_data.payload).unwrap();
+        let Ok(decoded_text_message) = String::from_utf8(packet_data.payload) else {
+          println!("Received channel message with invalid UTF-8, not handling...");
+          return None;
+        };
 
         println!("Received text message from channel: {:?}", &decoded_text_message);
 
@@ -150,7 +156,10 @@ pub fn handle_mesh_packet(mesh_packet: protobufs::MeshPacket, nodes: &Nodes, con
     }
 
     meshtastic::protobufs::PortNum::WaypointApp => {
-      let decoded_waypoint = meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()).unwrap();
+      let Ok(decoded_waypoint) = meshtastic::protobufs::Waypoint::decode(packet_data.payload.as_slice()) else {
+        println!("Received waypoint packet with invalid protobuf, not handling...");
+        return None;
+      };
 
       println!("Received waypoint packet: {:?}", decoded_waypoint);
     }
