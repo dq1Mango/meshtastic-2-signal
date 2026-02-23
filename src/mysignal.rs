@@ -8,11 +8,9 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::task::spawn_local;
 
-use crate::Profile;
-use crate::ProfileKey;
-use crate::Received;
-use crate::Uuid;
-use crate::logger::Logger;
+use meshtastic_2_signal::logger::Logger;
+use meshtastic_2_signal::update::Action;
+use meshtastic_2_signal::{Profile, ProfileKey, Received, Uuid};
 use crate::signal::Cmd;
 use crate::signal::attachments_tmp_dir;
 use crate::signal::get_contacts;
@@ -20,7 +18,6 @@ use crate::signal::list_groups;
 use crate::signal::process_incoming_message;
 use crate::signal::retrieve_profile;
 use crate::signal::run;
-use crate::update::Action;
 
 use futures::StreamExt;
 use futures::pin_mut;

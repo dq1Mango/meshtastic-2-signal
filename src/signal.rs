@@ -64,8 +64,8 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::MyManager;
-use crate::Profile;
-use crate::logger::Logger;
+use meshtastic_2_signal::Profile;
+use meshtastic_2_signal::logger::Logger;
 // #[derive(Parser)]
 // #[clap(about = "a basic signal CLI to try things out")]
 // struct Args {
@@ -808,8 +808,8 @@ pub async fn retrieve_profile(
 //   }
 // }
 
-use crate::update::Action;
-use crate::update::LinkingAction;
+use meshtastic_2_signal::update::Action;
+use meshtastic_2_signal::update::LinkingAction;
 
 pub async fn run(
   manager: &mut MyManager,
